@@ -1,0 +1,54 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glowBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(102 134) rotate(90) scale(92)">
+      <stop stop-color="#37C8FF" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#37C8FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowGold" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(171 148) rotate(90) scale(88)">
+      <stop stop-color="#FFC83D" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFC83D" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="capTop" x1="70" y1="69" x2="186" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <linearGradient id="capBase" x1="95" y1="106" x2="162" y2="147" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <linearGradient id="bookBlue" x1="53" y1="120" x2="130" y2="204" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="bookGreen" x1="121" y1="121" x2="189" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#84CC16"/>
+      <stop offset="1" stop-color="#16A34A"/>
+    </linearGradient>
+    <linearGradient id="bookOrange" x1="145" y1="132" x2="212" y2="203" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="#0F172A"/>
+  <circle cx="95" cy="140" r="76" fill="url(#glowBlue)"/>
+  <circle cx="171" cy="149" r="72" fill="url(#glowGold)"/>
+
+  <path d="M68 84L128 60L188 84L128 107L68 84Z" fill="url(#capTop)"/>
+  <path d="M96 98L128 110L160 98V130C160 137 146 144 128 144C110 144 96 137 96 130V98Z" fill="url(#capBase)"/>
+
+  <path d="M82 128C100 128 114 133 128 144V205C112 192 96 188 74 188L82 128Z" fill="url(#bookBlue)"/>
+  <path d="M90 122C108 122 120 127 128 135V191C118 183 107 179 92 178L90 122Z" fill="#0EA5E9" fill-opacity="0.9"/>
+
+  <path d="M174 128C156 128 142 133 128 144V205C144 192 160 188 182 188L174 128Z" fill="url(#bookOrange)"/>
+  <path d="M166 122C148 122 136 127 128 135V191C138 183 149 179 164 178L166 122Z" fill="url(#bookGreen)" fill-opacity="0.95"/>
+
+  <path d="M74 188C97 188 113 193 128 205C143 193 159 188 182 188" stroke="#0F172A" stroke-opacity="0.28" stroke-width="6" stroke-linecap="round"/>
+
+  <rect x="58" y="118" width="8" height="8" rx="2" fill="#F97316"/>
+  <rect x="72" y="126" width="6" height="6" rx="2" fill="#38BDF8"/>
+  <rect x="184" y="116" width="8" height="8" rx="2" fill="#F97316"/>
+  <rect x="196" y="126" width="6" height="6" rx="2" fill="#FBBF24"/>
+  <rect x="165" y="111" width="5" height="5" rx="1.5" fill="#FBBF24"/>
+  <rect x="86" y="111" width="5" height="5" rx="1.5" fill="#38BDF8"/>
+</svg>

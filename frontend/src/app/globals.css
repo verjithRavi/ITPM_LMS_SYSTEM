@@ -1,0 +1,348 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.edu-shell {
+  color: #0f172a;
+}
+
+.edu-shell > div[class*="min-h-screen"],
+.edu-shell > div[class*="bg-[radial-gradient"],
+.edu-shell > div[class*="bg-[linear-gradient"] {
+  background: transparent !important;
+}
+
+.edu-shell [class*="bg-[linear-gradient"],
+.edu-shell [class*="bg-[radial-gradient"],
+.edu-shell [class*="bg-white/6"],
+.edu-shell [class*="bg-white/8"],
+.edu-shell [class*="bg-white/5"],
+.edu-shell [class*="bg-white/12"],
+.edu-shell [class*="bg-white/10"],
+.edu-shell [class*="bg-slate-950/35"],
+.edu-shell [class*="bg-slate-950/40"],
+.edu-shell [class*="bg-slate-950/45"],
+.edu-shell [class*="bg-slate-950/60"],
+.edu-shell [class*="bg-black/15"],
+.edu-shell [class*="bg-black/20"],
+.edu-shell [class*="bg-black/10"],
+.edu-shell [class*="bg-black/25"],
+.edu-shell [class*="bg-black/30"] {
+  background: #ffffff !important;
+  border-color: #dbeafe !important;
+  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.08) !important;
+}
+
+.edu-shell [class*="text-white"] {
+  color: #0f172a !important;
+}
+
+.edu-shell [class*="bg-red-600"][class*="text-white"],
+.edu-shell [class*="bg-red-700"][class*="text-white"],
+.edu-shell [class*="bg-red-600"] [class*="text-white"],
+.edu-shell [class*="bg-red-700"] [class*="text-white"] {
+  color: #ffffff !important;
+}
+
+.edu-shell [class*="text-slate-400"],
+.edu-shell [class*="text-slate-300"],
+.edu-shell [class*="text-slate-200"],
+.edu-shell [class*="text-violet-100"],
+.edu-shell [class*="text-violet-200"],
+.edu-shell [class*="text-emerald-100"],
+.edu-shell [class*="text-emerald-200"],
+.edu-shell [class*="text-cyan-100"],
+.edu-shell [class*="text-cyan-200"],
+.edu-shell [class*="text-lime-200"],
+.edu-shell [class*="text-orange-100"],
+.edu-shell [class*="text-orange-200"],
+.edu-shell [class*="text-amber-100"],
+.edu-shell [class*="text-amber-200"],
+.edu-shell [class*="text-violet-300"],
+.edu-shell [class*="text-violet-400"],
+.edu-shell [class*="text-purple-100"],
+.edu-shell [class*="text-purple-200"] {
+  color: #5b708b !important;
+}
+
+.edu-shell [class*="text-violet-700"],
+.edu-shell [class*="text-purple-700"],
+.edu-shell [class*="text-orange-700"],
+.edu-shell [class*="text-amber-700"] {
+  color: #2563eb !important;
+}
+
+.edu-shell [class*="border-white/10"],
+.edu-shell [class*="border-emerald-300"],
+.edu-shell [class*="border-cyan-300"],
+.edu-shell [class*="border-orange-300"],
+.edu-shell [class*="border-lime-300"],
+.edu-shell [class*="border-amber-300"],
+.edu-shell [class*="border-violet-300"],
+.edu-shell [class*="border-purple-300"] {
+  border-color: #dbeafe !important;
+}
+
+.edu-shell [class*="bg-gradient-to-r"] {
+  background-image: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+  color: #ffffff !important;
+  border-color: #2563eb !important;
+}
+
+.edu-shell [class*="hover:border-emerald-300"],
+.edu-shell [class*="hover:border-cyan-300"],
+.edu-shell [class*="hover:border-lime-300"],
+.edu-shell [class*="hover:border-amber-300"],
+.edu-shell [class*="hover:border-purple-300"],
+.edu-shell [class*="hover:border-orange-300"] {
+  border-color: #93c5fd !important;
+}
+
+.edu-shell [class*="bg-emerald-300/15"],
+.edu-shell [class*="bg-amber-300/15"],
+.edu-shell [class*="bg-cyan-300/15"],
+.edu-shell [class*="bg-lime-300/15"],
+.edu-shell [class*="bg-violet-400/12"],
+.edu-shell [class*="bg-violet-400/18"],
+.edu-shell [class*="bg-orange-400/15"],
+.edu-shell [class*="bg-amber-400/15"],
+.edu-shell [class*="bg-white/20"] {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.edu-shell [class*="bg-violet-300/30"],
+.edu-shell [class*="bg-orange-300/30"],
+.edu-shell [class*="bg-amber-300/30"] {
+  border-color: #bfdbfe !important;
+}
+
+.edu-shell [class*="bg-violet-400/15"],
+.edu-shell [class*="bg-orange-400/12"],
+.edu-shell [class*="bg-orange-400/15"],
+.edu-shell [class*="bg-amber-300/25"],
+.edu-shell [class*="bg-amber-300/30"],
+.edu-shell [class*="bg-red-500/12"],
+.edu-shell [class*="bg-red-400/15"],
+.edu-shell [class*="bg-red-500/10"] {
+  background: #eff6ff !important;
+}
+
+.edu-shell [class*="from-violet-400"],
+.edu-shell [class*="to-fuchsia-400"],
+.edu-shell [class*="from-orange-400"],
+.edu-shell [class*="to-amber-300"],
+.edu-shell [class*="via-amber-300"],
+.edu-shell [class*="to-orange-500"] {
+  --tw-gradient-from: #2563eb !important;
+  --tw-gradient-to: rgb(59 130 246 / 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #3b82f6, var(--tw-gradient-to) !important;
+}
+
+.edu-shell [class*="shadow-[0_12px_30px_rgba(251,146,60"],
+.edu-shell [class*="shadow-[0_14px_32px_rgba(251,146,60"],
+.edu-shell [class*="shadow-[0_14px_35px_rgba(251,146,60"],
+.edu-shell [class*="shadow-[0_10px_30px_rgba(45,212,191"],
+.edu-shell [class*="shadow-[0_12px_24px_rgba(37,99,235"] {
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12) !important;
+}
+
+.edu-shell [class*="bg-blue-600"],
+.edu-shell [class*="bg-blue-700"],
+.edu-shell [class*="bg-blue-500"],
+.edu-shell [class*="bg-gradient-to-r"] {
+  color: #ffffff !important;
+}
+
+.edu-shell [class*="bg-blue-600"] [class*="text-"],
+.edu-shell [class*="bg-blue-700"] [class*="text-"],
+.edu-shell [class*="bg-blue-500"] [class*="text-"],
+.edu-shell [class*="bg-gradient-to-r"] [class*="text-"] {
+  color: #ffffff !important;
+}
+
+.edu-shell [class*="bg-white"],
+.edu-shell [class*="bg-blue-50"] {
+  color: #0f172a;
+}
+
+.edu-shell [class*="bg-white"] [class*="text-white"],
+.edu-shell [class*="bg-blue-50"] [class*="text-white"] {
+  color: #0f172a !important;
+}
+
+.edu-shell [class*="bg-red-600"] [class*="text-white"],
+.edu-shell [class*="bg-red-700"] [class*="text-white"] {
+  color: #ffffff !important;
+}
+
+.edu-shell [class*="bg-blue-600"][class*="text-white"],
+.edu-shell [class*="bg-blue-700"][class*="text-white"],
+.edu-shell [class*="bg-blue-500"][class*="text-white"],
+.edu-shell [class*="bg-gradient-to-r"][class*="text-white"],
+.edu-shell [class*="bg-white"] [class*="bg-blue-600"][class*="text-white"],
+.edu-shell [class*="bg-white"] [class*="bg-blue-700"][class*="text-white"],
+.edu-shell [class*="bg-white"] [class*="bg-blue-500"][class*="text-white"],
+.edu-shell [class*="bg-blue-50"] [class*="bg-blue-600"][class*="text-white"],
+.edu-shell [class*="bg-blue-50"] [class*="bg-blue-700"][class*="text-white"],
+.edu-shell [class*="bg-blue-50"] [class*="bg-blue-500"][class*="text-white"] {
+  color: #ffffff !important;
+}
+
+.edu-shell [class*="focus:border-orange-300"],
+.edu-shell [class*="focus:border-violet-300"],
+.edu-shell [class*="focus:border-purple-300"] {
+  border-color: #60a5fa !important;
+}
+
+.edu-shell [class*="focus:ring-orange-300/20"],
+.edu-shell [class*="focus:ring-violet-300/20"],
+.edu-shell [class*="focus:ring-purple-300/20"] {
+  --tw-ring-color: rgb(191 219 254 / 0.8) !important;
+}
+
+.admin-shell [class*="border-emerald-300"],
+.admin-shell [class*="border-cyan-300"],
+.admin-shell [class*="border-lime-300"],
+.admin-shell [class*="border-amber-300"],
+.admin-shell [class*="border-emerald-400"] {
+  border-color: #bfdbfe !important;
+}
+
+.admin-shell [class*="bg-emerald-400/15"],
+.admin-shell [class*="bg-cyan-400/15"],
+.admin-shell [class*="bg-emerald-400/10"],
+.admin-shell [class*="bg-cyan-400/10"],
+.admin-shell [class*="bg-emerald-300/10"],
+.admin-shell [class*="bg-cyan-300/15"],
+.admin-shell [class*="bg-lime-300/15"],
+.admin-shell [class*="bg-amber-300/15"],
+.admin-shell [class*="bg-amber-400/10"] {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.admin-shell [class*="text-emerald-100"],
+.admin-shell [class*="text-emerald-200"],
+.admin-shell [class*="text-cyan-100"],
+.admin-shell [class*="text-cyan-200"],
+.admin-shell [class*="text-lime-200"],
+.admin-shell [class*="text-amber-100"],
+.admin-shell [class*="text-amber-200"] {
+  color: #2563eb !important;
+}
+
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(13,148,136"],
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(132,204,22"],
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(14,165,233"],
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(245,158,11"],
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(16,185,129"],
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(20,184,166"],
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(8,145,178"],
+.admin-shell [class*="bg-[linear-gradient(135deg,rgba(6,78,59"],
+.admin-shell [class*="bg-[linear-gradient(145deg,rgba(16,185,129"],
+.admin-shell [class*="bg-[linear-gradient(145deg,rgba(14,165,233"],
+.admin-shell [class*="bg-[linear-gradient(145deg,rgba(245,158,11"] {
+  background: #ffffff !important;
+  border-color: #dbeafe !important;
+  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.08) !important;
+}
+
+.admin-shell [class*="bg-emerald-100"],
+.admin-shell [class*="bg-amber-100"] {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+.admin-shell [class*="focus:border-emerald-300"] {
+  border-color: #60a5fa !important;
+}
+
+.admin-shell [class*="bg-emerald-300 "],
+.admin-shell [class*="bg-emerald-300px"],
+.admin-shell [class*="bg-emerald-300"],
+.admin-shell [class*="bg-cyan-400/15"],
+.admin-shell [class*="bg-cyan-400"],
+.admin-shell [class*="bg-emerald-400/15"] {
+  background-image: none !important;
+  background-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.admin-shell [class*="bg-emerald-300 "] [class*="text-"],
+.admin-shell [class*="bg-emerald-300px"] [class*="text-"],
+.admin-shell [class*="bg-emerald-300"] [class*="text-"],
+.admin-shell [class*="bg-cyan-400/15"] [class*="text-"],
+.admin-shell [class*="bg-cyan-400"] [class*="text-"],
+.admin-shell [class*="bg-emerald-400/15"] [class*="text-"] {
+  color: #ffffff !important;
+}
+
+.admin-shell [class*="bg-blue-600"],
+.admin-shell [class*="bg-blue-700"],
+.admin-shell [class*="bg-blue-500"],
+.admin-shell [class*="bg-sky-400"],
+.admin-shell [class*="bg-gradient-to-r"] {
+  color: #ffffff !important;
+}
+
+.admin-shell [class*="bg-blue-600"] [class*="text-"],
+.admin-shell [class*="bg-blue-700"] [class*="text-"],
+.admin-shell [class*="bg-blue-500"] [class*="text-"],
+.admin-shell [class*="bg-sky-400"] [class*="text-"],
+.admin-shell [class*="bg-gradient-to-r"] [class*="text-"] {
+  color: #ffffff !important;
+}
+
+.admin-shell [class*="bg-white"],
+.admin-shell [class*="bg-blue-50"] {
+  color: #0f172a;
+}
+
+.admin-shell [class*="bg-white"] [class*="text-white"],
+.admin-shell [class*="bg-blue-50"] [class*="text-white"] {
+  color: #0f172a !important;
+}
+
+.admin-shell [class*="bg-red-600"][class*="text-white"],
+.admin-shell [class*="bg-red-700"][class*="text-white"],
+.admin-shell [class*="bg-red-600"] [class*="text-white"],
+.admin-shell [class*="bg-red-700"] [class*="text-white"] {
+  color: #ffffff !important;
+}
+
+.admin-shell [class*="bg-blue-600"][class*="text-white"],
+.admin-shell [class*="bg-blue-700"][class*="text-white"],
+.admin-shell [class*="bg-blue-500"][class*="text-white"],
+.admin-shell [class*="bg-gradient-to-r"][class*="text-white"],
+.admin-shell [class*="bg-white"] [class*="bg-blue-600"][class*="text-white"],
+.admin-shell [class*="bg-white"] [class*="bg-blue-700"][class*="text-white"],
+.admin-shell [class*="bg-white"] [class*="bg-blue-500"][class*="text-white"],
+.admin-shell [class*="bg-blue-50"] [class*="bg-blue-600"][class*="text-white"],
+.admin-shell [class*="bg-blue-50"] [class*="bg-blue-700"][class*="text-white"],
+.admin-shell [class*="bg-blue-50"] [class*="bg-blue-500"][class*="text-white"] {
+  color: #ffffff !important;
+}
