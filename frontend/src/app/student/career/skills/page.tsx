@@ -22,6 +22,28 @@ function levelColor(level: string) {
 
 function levelRank(level: string) { return LEVELS.indexOf(level); }
 
+function normalizeJobRole(role: Partial<JobRole> & { _id?: string; title?: string }) : JobRole | null {
+  if (!role._id || !role.title) return null;
+
+  const requiredSkills = Array.isArray(role.requiredSkills)
+    ? role.requiredSkills
+        .filter(
+          (item): item is { name: string; minLevel: string } =>
+            !!item && typeof item.name === "string" && typeof item.minLevel === "string"
+        )
+        .map((item) => ({
+          name: item.name,
+          minLevel: LEVELS.includes(item.minLevel) ? item.minLevel : "beginner",
+        }))
+    : [];
+
+  return {
+    _id: role._id,
+    title: role.title,
+    requiredSkills,
+  };
+}
+
 export default function SkillsPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
@@ -37,13 +59,12 @@ export default function SkillsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [skillsRes, jobsRes] = await Promise.all([
+        const [skillsRes, rolesRes] = await Promise.all([
           careerFetch<{ data: { _id: string; skillName: string; level: string }[] }>("/skills"),
-          careerFetch<{ data: JobRole[] }>("/jobs/suggestions"),
+          careerFetch<{ data: Array<Partial<JobRole> & { _id?: string; title?: string }> }>("/jobs"),
         ]);
         setSkills((skillsRes.data || []).map((s) => ({ id: s._id, skillName: s.skillName, level: s.level })));
-        const jRes = await careerFetch<{ data: JobRole[] }>("/careers");
-        setJobRoles(jRes.data || []);
+        setJobRoles((rolesRes.data || []).map(normalizeJobRole).filter((role): role is JobRole => role !== null));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
@@ -98,7 +119,7 @@ export default function SkillsPage() {
 
   const selectedJobRole = jobRoles.find((r) => r._id === selectedRole);
   const gapSkills = selectedJobRole
-    ? selectedJobRole.requiredSkills.filter((req) => {
+    ? (selectedJobRole.requiredSkills || []).filter((req) => {
         const mySkill = skills.find((s) => s.skillName.toLowerCase() === req.name.toLowerCase());
         return !mySkill || levelRank(mySkill.level) < levelRank(req.minLevel);
       })

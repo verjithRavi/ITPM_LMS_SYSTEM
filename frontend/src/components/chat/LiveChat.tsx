@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { buildApiUrl } from "@/lib/api";
 
 interface Message {
   id: string;
@@ -104,7 +105,7 @@ export default function LiveChat({ userRole, userId }: LiveChatProps) {
       setConnectionStatus('connecting');
       
       console.log('Making API call to load chats...');
-      const response = await fetch("http://localhost:5001/api/chat", {
+      const response = await fetch(buildApiUrl("/api/chat"), {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -182,7 +183,7 @@ export default function LiveChat({ userRole, userId }: LiveChatProps) {
       const token = localStorage.getItem("token");
       if (!token) return;
       
-      const response = await fetch("http://localhost:5001/api/chat", {
+      const response = await fetch(buildApiUrl("/api/chat"), {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -215,7 +216,7 @@ export default function LiveChat({ userRole, userId }: LiveChatProps) {
       const token = localStorage.getItem("token");
       if (!token) return;
       
-      const response = await fetch(`http://localhost:5001/api/chat/${chatId}/messages`, {
+      const response = await fetch(buildApiUrl(`/api/chat/${chatId}/messages`), {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -258,7 +259,7 @@ export default function LiveChat({ userRole, userId }: LiveChatProps) {
       const token = localStorage.getItem("token");
       if (!token) return;
       
-      const response = await fetch(`http://localhost:5001/api/chat/${activeChat}/messages`, {
+      const response = await fetch(buildApiUrl(`/api/chat/${activeChat}/messages`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -303,7 +304,7 @@ export default function LiveChat({ userRole, userId }: LiveChatProps) {
       const token = localStorage.getItem("token");
       if (!token) return;
       
-      const response = await fetch("http://localhost:5001/api/chat/start", {
+      const response = await fetch(buildApiUrl("/api/chat/start"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -340,7 +341,7 @@ export default function LiveChat({ userRole, userId }: LiveChatProps) {
       const token = localStorage.getItem("token");
       if (!token) return;
       
-      const response = await fetch(`http://localhost:5001/api/chat/unread/count`, {
+      const response = await fetch(buildApiUrl("/api/chat/unread/count"), {
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`

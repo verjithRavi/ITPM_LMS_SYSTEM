@@ -9,22 +9,22 @@ function careerFetch<T = unknown>(path: string, options: RequestInit = {}) {
 }
 
 type JobSuggestion = {
-  jobRoleId: string;
+  _id: string;
   title: string;
-  matchScore: number;
-  matchedSkills: string[];
-  missingSkills: { name: string; minLevel: string }[];
+  matchPercentage: number;
+  matchedSkills: { name: string; userLevel: string; requiredLevel: string }[];
+  missingSkills: { name: string; requiredLevel: string; userLevel?: string; reason?: string }[];
 };
 
-function scoreColor(score: number) {
-  if (score >= 80) return "text-emerald-600";
-  if (score >= 50) return "text-amber-600";
+function scoreColor(pct: number) {
+  if (pct >= 80) return "text-emerald-600";
+  if (pct >= 50) return "text-amber-600";
   return "text-red-500";
 }
 
-function scoreBg(score: number) {
-  if (score >= 80) return "bg-emerald-50 border-emerald-200";
-  if (score >= 50) return "bg-amber-50 border-amber-200";
+function scoreBg(pct: number) {
+  if (pct >= 80) return "bg-emerald-50 border-emerald-200";
+  if (pct >= 50) return "bg-amber-50 border-amber-200";
   return "bg-red-50 border-red-200";
 }
 
@@ -64,8 +64,8 @@ export default function JobSuggestionsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {suggestions.sort((a, b) => b.matchScore - a.matchScore).map((job) => (
-              <div key={job.jobRoleId} className={`rounded-2xl border p-5 shadow-sm ${scoreBg(job.matchScore)}`}>
+            {suggestions.slice().sort((a, b) => b.matchPercentage - a.matchPercentage).map((job) => (
+              <div key={job._id} className={`rounded-2xl border p-5 shadow-sm ${scoreBg(job.matchPercentage)}`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">{job.title}</h3>
@@ -74,11 +74,11 @@ export default function JobSuggestionsPage() {
                     <div className="h-12 w-12">
                       <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90">
                         <circle cx="18" cy="18" r="15" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-                        <circle cx="18" cy="18" r="15" fill="none" stroke={job.matchScore >= 80 ? "#059669" : job.matchScore >= 50 ? "#d97706" : "#ef4444"} strokeWidth="3" strokeDasharray={`${(job.matchScore / 100) * 94.25} 94.25`} strokeLinecap="round" />
+                        <circle cx="18" cy="18" r="15" fill="none" stroke={job.matchPercentage >= 80 ? "#059669" : job.matchPercentage >= 50 ? "#d97706" : "#ef4444"} strokeWidth="3" strokeDasharray={`${(job.matchPercentage / 100) * 94.25} 94.25`} strokeLinecap="round" />
                       </svg>
                     </div>
                     <div>
-                      <p className={`text-2xl font-bold ${scoreColor(job.matchScore)}`}>{job.matchScore}%</p>
+                      <p className={`text-2xl font-bold ${scoreColor(job.matchPercentage)}`}>{job.matchPercentage}%</p>
                       <p className="text-xs text-slate-400">match</p>
                     </div>
                   </div>
@@ -88,8 +88,10 @@ export default function JobSuggestionsPage() {
                   <div className="mt-4">
                     <p className="mb-2 text-xs font-medium text-slate-500">Matched Skills</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {job.matchedSkills.map((s, i) => (
-                        <span key={i} className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">{s}</span>
+                      {job.matchedSkills.map((s) => (
+                        <span key={s.name} className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                          {s.name} <span className="opacity-70">({s.userLevel})</span>
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -99,8 +101,10 @@ export default function JobSuggestionsPage() {
                   <div className="mt-3">
                     <p className="mb-2 text-xs font-medium text-slate-500">Missing / Needs Improvement</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {job.missingSkills.map((s, i) => (
-                        <span key={i} className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-600">{s.name} ({s.minLevel}+)</span>
+                      {job.missingSkills.map((s) => (
+                        <span key={s.name} className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-600">
+                          {s.name} <span className="opacity-70">({s.requiredLevel}+ required)</span>
+                        </span>
                       ))}
                     </div>
                   </div>

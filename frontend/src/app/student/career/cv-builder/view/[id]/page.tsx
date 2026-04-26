@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, buildApiUrl } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import ClassicCVPreview from "@/components/career/ClassicCVPreview";
 import type { CVState } from "@/components/career/ClassicCVForm";
@@ -70,7 +70,7 @@ export default function CVViewPage() {
     setDownloading(true);
     try {
       const token = getToken() || "";
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000"}/api/career/cv/${cvId}/download`, {
+      const res = await fetch(buildApiUrl(`/api/career/cv/${cvId}/download`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Download failed");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
@@ -45,6 +45,14 @@ function passLabel(passStatus: ModuleResultRow["passStatus"]) {
 }
 
 export default function StudentMarksPage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-6 text-sm text-slate-500">Loading...</div>}>
+      <StudentMarksContent />
+    </Suspense>
+  );
+}
+
+function StudentMarksContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useMemo(() => getToken(), []);
