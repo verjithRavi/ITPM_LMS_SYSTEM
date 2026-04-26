@@ -109,6 +109,35 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
       ),
     },
     {
+      href: "/admin/books",
+      label: "Book Management",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      ),
+    },
+    {
+      href: "/admin/courses",
+      label: "Course Management",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      ),
+    },
+    {
+      href: "/admin/chat",
+      label: "Live Chat",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      ),
+    },
+    {
       href: "/admin/career/cv-templates",
       label: "CV Templates",
       icon: (
@@ -231,6 +260,36 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
       ),
     },
     {
+      href: "/student/books",
+      label: "Books",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      ),
+    },
+    {
+      href: "/student/courses",
+      label: "Courses",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      ),
+    },
+    {
+      href: "/student/career-finder",
+      label: "Career Finder",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+    },
+    {
       href: "/student/events",
       label: "Events",
       icon: (
@@ -343,6 +402,18 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
         </svg>
       ),
     },
+    {
+      href: "/student/scheduler",
+      label: "Weekly Scheduler",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      ),
+    },
   ],
 };
 
@@ -363,6 +434,8 @@ export default function RoleSidebarShell({
   const pathname = usePathname();
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [unread, setUnread] = useState(0);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [previousChatUnread, setPreviousChatUnread] = useState(0);
   const [eventAlertCount, setEventAlertCount] = useState(0);
   const [reminderPopups, setReminderPopups] = useState<NotificationItem[]>([]);
   const [showPasswordPopup, setShowPasswordPopup] = useState(false);
@@ -401,6 +474,45 @@ export default function RoleSidebarShell({
       setUnread(data.unreadCount);
     } catch {
       // ignore
+    }
+  }
+
+  async function loadChatUnread() {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const data = await apiFetch<{ unreadCount: number }>("/api/chat/unread/count", {}, token);
+      const newCount = data.unreadCount;
+      
+      // Check if unread count increased (new message received)
+      if (role === "admin" && newCount > previousChatUnread) {
+        // Show browser notification for new message
+        showChatNotification(newCount);
+      }
+      
+      setChatUnread(newCount);
+      setPreviousChatUnread(newCount);
+    } catch {
+      // ignore
+    }
+  }
+
+  function showChatNotification(count: number) {
+    if (!("Notification" in window)) return;
+    
+    if (Notification.permission === "granted") {
+      new Notification("New Chat Message", {
+        body: `You have ${count} unread message${count > 1 ? 's' : ''} from students`,
+        icon: "/favicon.ico",
+        tag: "chat-notification"
+      });
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          showChatNotification(count);
+        }
+      });
     }
   }
 
@@ -488,6 +600,7 @@ export default function RoleSidebarShell({
   const refreshShell = useEffectEvent(() => {
     void loadUser();
     void loadUnread();
+    void loadChatUnread();
     void loadEventAlertCount();
     void loadReminderPopups();
   });
@@ -498,7 +611,7 @@ export default function RoleSidebarShell({
     }, 0);
     const id = setInterval(() => {
       refreshShell();
-    }, 10000);
+    }, 3000);
 
     return () => {
       clearTimeout(initId);
@@ -619,12 +732,12 @@ export default function RoleSidebarShell({
             </button>
           </div>
 
-          <nav className="mt-5 flex-1 space-y-1 px-4">
+          <nav className="mt-5 flex-1 space-y-1 px-4 overflow-y-auto">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                className={`flex items-center justify-between rounded-2xl px-4 py-3 text-xs font-medium transition ${
                   isActive(item.href)
                     ? "bg-blue-500/16 text-white shadow-[0_12px_24px_rgba(37,99,235,0.16)]"
                     : "text-slate-200 hover:bg-white/6 hover:text-white"
@@ -641,6 +754,10 @@ export default function RoleSidebarShell({
                 ) : item.href.includes("notifications") && unread > 0 ? (
                   <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[11px] font-semibold text-white">
                     {unread}
+                  </span>
+                ) : item.href.includes("chat") && chatUnread > 0 ? (
+                  <span className="rounded-full bg-green-500 px-2 py-0.5 text-[11px] font-semibold text-white animate-pulse">
+                    {chatUnread}
                   </span>
                 ) : null}
               </Link>
