@@ -35,7 +35,9 @@ type EventItem = {
   targetSemester?: number | null;
 };
 
-type EventCreateErrors = Partial<Record<"title" | "location" | "startsAt" | "targetFaculty" | "targetYear" | "targetSemester", string>>;
+type EventCreateErrors = Partial<Record<"title" | "description" | "location" | "startsAt" | "targetFaculty" | "targetYear" | "targetSemester", string>>;
+const EVENT_TITLE_MAX_LENGTH = 50;
+const EVENT_DESCRIPTION_MAX_LENGTH = 200;
 
 const WEEK_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -132,6 +134,16 @@ function isTodayEvent(startsAt: string) {
 
 function renderFieldError(message?: string) {
   return message ? <div className="mt-1 text-xs font-medium text-red-300">{message}</div> : null;
+}
+
+function validateEventTitle(value: string) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "This field is required.";
+  return trimmedValue.length <= EVENT_TITLE_MAX_LENGTH ? "" : `Title must be ${EVENT_TITLE_MAX_LENGTH} characters or fewer.`;
+}
+
+function validateEventDescription(value: string) {
+  return value.trim().length <= EVENT_DESCRIPTION_MAX_LENGTH ? "" : `Description must be ${EVENT_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
 }
 
 export default function AdminEventsCalendarPage() {
@@ -305,7 +317,10 @@ export default function AdminEventsCalendarPage() {
 
   function validateCreateEventForm() {
     const errors: EventCreateErrors = {};
-    if (!title.trim()) errors.title = "This field is required.";
+    const titleError = validateEventTitle(title);
+    const descriptionError = validateEventDescription(description);
+    if (titleError) errors.title = titleError;
+    if (descriptionError) errors.description = descriptionError;
     if (!location.trim()) errors.location = "This field is required.";
     if (!startsAt) errors.startsAt = "This field is required.";
     if (requiresFaculty(targetType) && !targetFaculty) errors.targetFaculty = "This field is required.";
@@ -359,6 +374,9 @@ export default function AdminEventsCalendarPage() {
 
   async function saveChanges() {
     if (!token || !selectedEvent) return;
+    const validationErrors = validateCreateEventForm();
+    setCreateErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) return;
 
     setSaving(true);
     setFormError(null);
@@ -649,10 +667,15 @@ export default function AdminEventsCalendarPage() {
                 <input
                   className="w-full rounded-xl border border-white/10 bg-slate-950/35 p-2.5 text-sm text-white outline-none transition"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTitle(value);
+                    setCreateErrors((current) => ({ ...current, title: validateEventTitle(value) }));
+                  }}
                   placeholder="Event title"
                 />
                 {renderFieldError(createErrors.title)}
+                <div className="mt-1 text-right text-xs text-slate-400">{title.length}/{EVENT_TITLE_MAX_LENGTH}</div>
               </label>
 
               <label className="block">
@@ -703,9 +726,15 @@ export default function AdminEventsCalendarPage() {
                   className="w-full rounded-xl border border-white/10 bg-slate-950/35 p-2.5 text-sm text-white outline-none transition"
                   rows={4}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setDescription(value);
+                    setCreateErrors((current) => ({ ...current, description: validateEventDescription(value) }));
+                  }}
                   placeholder="Event description"
                 />
+                {renderFieldError(createErrors.description)}
+                <div className="mt-1 text-right text-xs text-slate-400">{description.length}/{EVENT_DESCRIPTION_MAX_LENGTH}</div>
               </label>
 
               {requiresFaculty(targetType) && (
@@ -806,9 +835,15 @@ export default function AdminEventsCalendarPage() {
                 <input
                   className="w-full rounded-xl border border-white/10 bg-slate-950/35 p-2.5 text-sm text-white outline-none transition"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTitle(value);
+                    setCreateErrors((current) => ({ ...current, title: validateEventTitle(value) }));
+                  }}
                   placeholder="Event title"
                 />
+                {renderFieldError(createErrors.title)}
+                <div className="mt-1 text-right text-xs text-slate-400">{title.length}/{EVENT_TITLE_MAX_LENGTH}</div>
               </label>
 
               <label className="block">
@@ -857,9 +892,15 @@ export default function AdminEventsCalendarPage() {
                   className="w-full rounded-xl border border-white/10 bg-slate-950/35 p-2.5 text-sm text-white outline-none transition"
                   rows={4}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setDescription(value);
+                    setCreateErrors((current) => ({ ...current, description: validateEventDescription(value) }));
+                  }}
                   placeholder="Event description"
                 />
+                {renderFieldError(createErrors.description)}
+                <div className="mt-1 text-right text-xs text-slate-400">{description.length}/{EVENT_DESCRIPTION_MAX_LENGTH}</div>
               </label>
 
               {requiresFaculty(targetType) && (
@@ -933,4 +974,3 @@ export default function AdminEventsCalendarPage() {
     </>
   );
 }
-

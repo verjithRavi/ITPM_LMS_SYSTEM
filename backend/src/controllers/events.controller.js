@@ -14,6 +14,18 @@ const TUTOR_ALLOWED_TARGET_TYPES = new Set([
   "YEAR_SEM",
   "FACULTY_YEAR_SEM",
 ]);
+const EVENT_TITLE_MAX_LENGTH = 50;
+const EVENT_DESCRIPTION_MAX_LENGTH = 200;
+
+function validateEventTextFields({ title, description }) {
+  if (title != null && String(title).trim().length > EVENT_TITLE_MAX_LENGTH) {
+    return `Title must be ${EVENT_TITLE_MAX_LENGTH} characters or fewer.`;
+  }
+  if (description != null && String(description).trim().length > EVENT_DESCRIPTION_MAX_LENGTH) {
+    return `Description must be ${EVENT_DESCRIPTION_MAX_LENGTH} characters or fewer.`;
+  }
+  return "";
+}
 
 async function findAudienceClashAtSameDateTime({ startsAt, candidateEventLike, excludeEventId = null }) {
   const sameTimeEvents = await Event.find({
@@ -54,6 +66,10 @@ exports.createEvent = async (req, res) => {
 
     if (!title || !startsAt || !location || !targetType) {
       return res.status(400).json({ message: "title, startsAt, location, targetType are required." });
+    }
+    const textValidationMessage = validateEventTextFields({ title, description });
+    if (textValidationMessage) {
+      return res.status(400).json({ message: textValidationMessage });
     }
     if (req.user.role === "TUTOR" && !TUTOR_ALLOWED_TARGET_TYPES.has(targetType)) {
       return res.status(403).json({ message: "Tutors can create events for students only." });
@@ -131,6 +147,10 @@ exports.updateEvent = async (req, res) => {
     const oldLocation = event.location;
 
     const { title, description, startsAt, location, targetType, targetFaculty, targetYear, targetSemester } = req.body;
+    const textValidationMessage = validateEventTextFields({ title, description });
+    if (textValidationMessage) {
+      return res.status(400).json({ message: textValidationMessage });
+    }
 
     if (title !== undefined) event.title = title;
     if (description !== undefined) event.description = description;
