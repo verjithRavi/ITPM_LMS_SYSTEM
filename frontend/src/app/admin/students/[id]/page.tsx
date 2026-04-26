@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
@@ -27,6 +27,14 @@ type Student = {
 };
 
 export default function AdminStudentDetailsPage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-6 text-sm text-slate-500">Loading...</div>}>
+      <AdminStudentDetailsContent />
+    </Suspense>
+  );
+}
+
+function AdminStudentDetailsContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
@@ -94,6 +94,14 @@ function StatCard({ label, value, note }: { label: string; value: string; note: 
 }
 
 export default function TutorAssignmentsPage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-6 text-sm text-slate-500">Loading...</div>}>
+      <TutorAssignmentsContent />
+    </Suspense>
+  );
+}
+
+function TutorAssignmentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = useMemo(() => getToken(), []);
