@@ -109,6 +109,15 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
       ),
     },
     {
+      href: "/admin/chat",
+      label: "Live Chat",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      ),
+    },
+    {
       href: "/admin/career/cv-templates",
       label: "CV Templates",
       icon: (
@@ -363,6 +372,8 @@ export default function RoleSidebarShell({
   const pathname = usePathname();
   const [user, setUser] = useState<ProfileUser | null>(null);
   const [unread, setUnread] = useState(0);
+  const [chatUnread, setChatUnread] = useState(0);
+  const [previousChatUnread, setPreviousChatUnread] = useState(0);
   const [eventAlertCount, setEventAlertCount] = useState(0);
   const [reminderPopups, setReminderPopups] = useState<NotificationItem[]>([]);
   const [showPasswordPopup, setShowPasswordPopup] = useState(false);
@@ -401,6 +412,45 @@ export default function RoleSidebarShell({
       setUnread(data.unreadCount);
     } catch {
       // ignore
+    }
+  }
+
+  async function loadChatUnread() {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const data = await apiFetch<{ unreadCount: number }>("/api/chat/unread/count", {}, token);
+      const newCount = data.unreadCount;
+      
+      // Check if unread count increased (new message received)
+      if (role === "admin" && newCount > previousChatUnread) {
+        // Show browser notification for new message
+        showChatNotification(newCount);
+      }
+      
+      setChatUnread(newCount);
+      setPreviousChatUnread(newCount);
+    } catch {
+      // ignore
+    }
+  }
+
+  function showChatNotification(count: number) {
+    if (!("Notification" in window)) return;
+    
+    if (Notification.permission === "granted") {
+      new Notification("New Chat Message", {
+        body: `You have ${count} unread message${count > 1 ? 's' : ''} from students`,
+        icon: "/favicon.ico",
+        tag: "chat-notification"
+      });
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          showChatNotification(count);
+        }
+      });
     }
   }
 
@@ -488,6 +538,7 @@ export default function RoleSidebarShell({
   const refreshShell = useEffectEvent(() => {
     void loadUser();
     void loadUnread();
+    void loadChatUnread();
     void loadEventAlertCount();
     void loadReminderPopups();
   });
@@ -498,7 +549,7 @@ export default function RoleSidebarShell({
     }, 0);
     const id = setInterval(() => {
       refreshShell();
-    }, 10000);
+    }, 3000);
 
     return () => {
       clearTimeout(initId);
@@ -641,6 +692,10 @@ export default function RoleSidebarShell({
                 ) : item.href.includes("notifications") && unread > 0 ? (
                   <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[11px] font-semibold text-white">
                     {unread}
+                  </span>
+                ) : item.href.includes("chat") && chatUnread > 0 ? (
+                  <span className="rounded-full bg-green-500 px-2 py-0.5 text-[11px] font-semibold text-white animate-pulse">
+                    {chatUnread}
                   </span>
                 ) : null}
               </Link>

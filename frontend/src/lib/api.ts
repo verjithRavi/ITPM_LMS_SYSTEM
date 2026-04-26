@@ -1,4 +1,16 @@
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const getBaseUrl = () => {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  
+  // Debug environment variable loading
+  if (typeof window !== 'undefined') {
+    console.log('Environment Debug:');
+    console.log('NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+    console.log('BASE after processing:', baseUrl);
+  }
+  
+  console.log('Final BASE URL being returned:', baseUrl || 'http://localhost:5001');
+  return baseUrl || 'http://localhost:5001';
+};
 
 export class ApiError extends Error {
   status: number;
@@ -22,7 +34,20 @@ export async function apiFetch<T>(
   options: RequestInit = {},
   token?: string
 ): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  console.log('=== API Fetch Debug ===');
+  const baseUrl = getBaseUrl();
+  console.log('BASE URL:', baseUrl);
+  console.log('Path:', path);
+  console.log('Token exists:', !!token);
+  
+  if (!baseUrl) {
+    throw new Error('API base URL is not configured');
+  }
+  
+  const fullUrl = `${baseUrl}${path}`;
+  console.log('Full URL:', fullUrl);
+  
+  const res = await fetch(fullUrl, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -30,6 +55,11 @@ export async function apiFetch<T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     }
   });
+
+  if (!res.ok) {
+    console.error('HTTP Error:', res.status, res.statusText);
+    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+  }
 
   const data = await res.json().catch(() => ({}));
 
