@@ -119,6 +119,16 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
       ),
     },
     {
+      href: "/admin/courses",
+      label: "Course Management",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      ),
+    },
+    {
       href: "/admin/chat",
       label: "Live Chat",
       icon: (
@@ -256,6 +266,16 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      ),
+    },
+    {
+      href: "/student/courses",
+      label: "Courses",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" />
+          <path d="M9 12l2 2 4-4" />
         </svg>
       ),
     },
