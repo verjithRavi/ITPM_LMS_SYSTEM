@@ -4,7 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-import { validateEmail, validatePhoneNumber, validateRequired } from "@/lib/formValidation";
+import { validateEmail, validateFullName, validatePassword, validatePhoneNumber, validateRequired } from "@/lib/formValidation";
 
 const FACULTIES = [
   "Faculty of Computing",
@@ -37,10 +37,10 @@ export default function AdminCreateTutorPage() {
     setCreating(true);
     setError(null);
     const nextErrors: Record<string, string> = {
-      fullName: validateRequired(fullName),
+      fullName: validateFullName(fullName),
       email: validateEmail(email),
       phoneNumber: validatePhoneNumber(phoneNumber),
-      password: validateRequired(password),
+      password: validatePassword(password),
       faculty: validateRequired(faculty),
     };
     setFieldErrors(nextErrors);
@@ -108,7 +108,7 @@ export default function AdminCreateTutorPage() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setFullName(value);
-                  setFieldErrors((current) => ({ ...current, fullName: validateRequired(value) }));
+                  setFieldErrors((current) => ({ ...current, fullName: validateFullName(value) }));
                 }}
                 required
               />
@@ -152,7 +152,7 @@ export default function AdminCreateTutorPage() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setPassword(value);
-                  setFieldErrors((current) => ({ ...current, password: validateRequired(value) }));
+                  setFieldErrors((current) => ({ ...current, password: validatePassword(value) }));
                 }}
                 required
               />

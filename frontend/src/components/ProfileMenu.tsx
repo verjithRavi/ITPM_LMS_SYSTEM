@@ -4,7 +4,14 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-import { validateEmail, validatePhoneNumber, validateRequired } from "@/lib/formValidation";
+import {
+  validateConfirmPassword,
+  validateEmail,
+  validateFullName,
+  validatePassword,
+  validatePhoneNumber,
+  validateRequired,
+} from "@/lib/formValidation";
 
 export type ProfileUser = {
   _id: string;
@@ -120,6 +127,7 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState<Record<string, string>>({});
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordPanelOpen, setPasswordPanelOpen] = useState(false);
   const [form, setForm] = useState({
@@ -192,7 +200,7 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
     const token = getToken();
     if (!token || !user) return;
     const nextErrors: Record<string, string> = {
-      fullName: validateRequired(form.fullName),
+      fullName: validateFullName(form.fullName),
       email: validateEmail(form.email),
       phoneNumber: validatePhoneNumber(form.phoneNumber),
     };
@@ -243,21 +251,19 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
     const token = getToken();
     if (!token) return;
 
+    const nextPasswordErrors: Record<string, string> = {
+      currentPassword: validateRequired(passwordForm.currentPassword),
+      newPassword: validatePassword(passwordForm.newPassword),
+      confirmPassword: validateConfirmPassword(passwordForm.newPassword, passwordForm.confirmPassword),
+    };
+    setPasswordFieldErrors(nextPasswordErrors);
+    if (Object.values(nextPasswordErrors).some(Boolean)) {
+      return;
+    }
+
     setChangingPassword(true);
     setError(null);
     setSuccess(null);
-
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      setError("Current password, new password, and confirm password are required.");
-      setChangingPassword(false);
-      return;
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setError("New password and confirm password do not match.");
-      setChangingPassword(false);
-      return;
-    }
 
     try {
       await apiFetch(
@@ -277,6 +283,7 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
         newPassword: "",
         confirmPassword: "",
       });
+      setPasswordFieldErrors({});
       setSuccess("Password changed successfully.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to change password.");
@@ -499,7 +506,7 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
                       onChange={(event) => {
                         const value = event.target.value;
                         setForm((current) => ({ ...current, fullName: value }));
-                        setFieldErrors((current) => ({ ...current, fullName: validateRequired(value) }));
+                        setFieldErrors((current) => ({ ...current, fullName: validateFullName(value) }));
                       }}
                     />
                     {fieldErrors.fullName ? <p className="text-xs font-medium text-red-500">{fieldErrors.fullName}</p> : null}
@@ -606,10 +613,13 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
                               className={`rounded-xl border px-3 py-2.5 outline-none ${isAdminTheme || isTutorTheme || isStudentTheme ? "border-blue-100 bg-white text-slate-900" : "border-slate-200 bg-white focus:border-slate-400"}`}
                               type="password"
                               value={passwordForm.currentPassword}
-                              onChange={(event) =>
-                                setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))
-                              }
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setPasswordForm((current) => ({ ...current, currentPassword: value }));
+                                setPasswordFieldErrors((current) => ({ ...current, currentPassword: validateRequired(value) }));
+                              }}
                             />
+                            {passwordFieldErrors.currentPassword ? <p className="text-xs font-medium text-red-500">{passwordFieldErrors.currentPassword}</p> : null}
                           </label>
 
                           <label className={`grid gap-1.5 text-sm ${isAdminTheme || isTutorTheme || isStudentTheme ? "text-slate-700" : "text-slate-700"}`}>
@@ -618,10 +628,19 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
                               className={`rounded-xl border px-3 py-2.5 outline-none ${isAdminTheme || isTutorTheme || isStudentTheme ? "border-blue-100 bg-white text-slate-900" : "border-slate-200 bg-white focus:border-slate-400"}`}
                               type="password"
                               value={passwordForm.newPassword}
-                              onChange={(event) =>
-                                setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))
-                              }
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setPasswordForm((current) => ({ ...current, newPassword: value }));
+                                setPasswordFieldErrors((current) => ({
+                                  ...current,
+                                  newPassword: validatePassword(value),
+                                  confirmPassword: passwordForm.confirmPassword
+                                    ? validateConfirmPassword(value, passwordForm.confirmPassword)
+                                    : current.confirmPassword,
+                                }));
+                              }}
                             />
+                            {passwordFieldErrors.newPassword ? <p className="text-xs font-medium text-red-500">{passwordFieldErrors.newPassword}</p> : null}
                           </label>
 
                           <label className={`grid gap-1.5 text-sm ${isAdminTheme || isTutorTheme || isStudentTheme ? "text-slate-700" : "text-slate-700"}`}>
@@ -630,10 +649,16 @@ export default function ProfileMenu({ user, roleLabel, accent, onUserUpdated, on
                               className={`rounded-xl border px-3 py-2.5 outline-none ${isAdminTheme || isTutorTheme || isStudentTheme ? "border-blue-100 bg-white text-slate-900" : "border-slate-200 bg-white focus:border-slate-400"}`}
                               type="password"
                               value={passwordForm.confirmPassword}
-                              onChange={(event) =>
-                                setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
-                              }
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setPasswordForm((current) => ({ ...current, confirmPassword: value }));
+                                setPasswordFieldErrors((current) => ({
+                                  ...current,
+                                  confirmPassword: validateConfirmPassword(passwordForm.newPassword, value),
+                                }));
+                              }}
                             />
+                            {passwordFieldErrors.confirmPassword ? <p className="text-xs font-medium text-red-500">{passwordFieldErrors.confirmPassword}</p> : null}
                           </label>
                         </div>
 

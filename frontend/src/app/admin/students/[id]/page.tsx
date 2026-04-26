@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/auth";
-import { validateEmail, validatePhoneNumber, validateRequired } from "@/lib/formValidation";
+import { validateEmail, validateFullName, validatePhoneNumber, validateRequired } from "@/lib/formValidation";
 
 type User = {
   _id: string;
@@ -124,7 +124,7 @@ function AdminStudentDetailsContent() {
   async function saveStudentChanges() {
     if (!token || !student) return;
     const nextErrors: Record<string, string> = {
-      fullName: validateRequired(fullName),
+      fullName: validateFullName(fullName),
       email: validateEmail(email),
       phoneNumber: validatePhoneNumber(phoneNumber),
       faculty: validateRequired(faculty),
@@ -212,7 +212,7 @@ function AdminStudentDetailsContent() {
                     onChange={(e) => {
                       const value = e.target.value;
                       setFullName(value);
-                      setFieldErrors((current) => ({ ...current, fullName: validateRequired(value) }));
+                      setFieldErrors((current) => ({ ...current, fullName: validateFullName(value) }));
                     }}
                   />
                 ) : (

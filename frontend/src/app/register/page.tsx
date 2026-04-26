@@ -5,9 +5,16 @@ import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
-import { validateEmail, validatePhoneNumber, validateRequired } from "@/lib/formValidation";
+import {
+  validateConfirmPassword,
+  validateEmail,
+  validateFullName,
+  validatePassword,
+  validatePhoneNumber,
+  validateRequired,
+} from "@/lib/formValidation";
 
-type Role = "STUDENT" | "TUTOR" | "ADMIN";
+type Role = "STUDENT";
 type RegisterResponse = {
   token?: string;
   requiresApproval?: boolean;
@@ -55,7 +62,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [role, setRole] = useState<Role>("STUDENT");
+  const role: Role = "STUDENT";
   const [faculty, setFaculty] = useState("");
   const [year, setYear] = useState<number>(2);
   const [semester, setSemester] = useState<number>(1);
@@ -74,12 +81,11 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     const nextErrors: Record<string, string> = {
-      fullName: validateRequired(fullName),
+      fullName: validateFullName(fullName),
       email: validateEmail(email),
       phoneNumber: validatePhoneNumber(phoneNumber),
-      password: validateRequired(password),
-      confirmPassword: validateRequired(confirmPassword),
-      role: validateRequired(role),
+      password: validatePassword(password),
+      confirmPassword: validateConfirmPassword(password, confirmPassword),
       faculty: needsFaculty ? validateRequired(faculty) : "",
       year: isStudent && year < 1 ? "This field is required." : "",
       semester: isStudent && semester < 1 ? "This field is required." : "",
@@ -87,10 +93,6 @@ export default function RegisterPage() {
     setFieldErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
     if (password !== confirmPassword) {
       setError("Password and confirm password do not match.");
       return;
@@ -172,7 +174,7 @@ export default function RegisterPage() {
                 onChange={(e) => {
                   const value = e.target.value;
                   setFullName(value);
-                  setFieldErrors((current) => ({ ...current, fullName: validateRequired(value) }));
+                  setFieldErrors((current) => ({ ...current, fullName: validateFullName(value) }));
                 }}
                 required
               />
@@ -224,7 +226,11 @@ export default function RegisterPage() {
                   onChange={(e) => {
                     const value = e.target.value;
                     setPassword(value);
-                    setFieldErrors((current) => ({ ...current, password: validateRequired(value) }));
+                    setFieldErrors((current) => ({
+                      ...current,
+                      password: validatePassword(value),
+                      confirmPassword: confirmPassword ? validateConfirmPassword(value, confirmPassword) : current.confirmPassword,
+                    }));
                   }}
                   required
                 />
@@ -251,7 +257,7 @@ export default function RegisterPage() {
                   onChange={(e) => {
                     const value = e.target.value;
                     setConfirmPassword(value);
-                    setFieldErrors((current) => ({ ...current, confirmPassword: validateRequired(value) }));
+                    setFieldErrors((current) => ({ ...current, confirmPassword: validateConfirmPassword(password, value) }));
                   }}
                   required
                 />
@@ -267,24 +273,8 @@ export default function RegisterPage() {
               {fieldErrors.confirmPassword ? <p className="mt-1 text-xs font-medium text-red-500">{fieldErrors.confirmPassword}</p> : null}
             </label>
 
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Role</span>
-              <select
-                className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                value={role}
-                onChange={(e) => {
-                  const value = e.target.value as Role;
-                  setRole(value);
-                  setFieldErrors((current) => ({ ...current, role: validateRequired(value) }));
-                }}
-              >
-                <option value="STUDENT">Student</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </label>
-
             <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-              Student and admin self-registration are enabled. Tutor accounts are created by admins.
+              Only students can self-register. Admin and tutor accounts are created by admins.
             </div>
 
             {needsFaculty && (
