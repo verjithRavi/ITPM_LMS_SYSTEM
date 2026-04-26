@@ -109,6 +109,16 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
       ),
     },
     {
+      href: "/admin/books",
+      label: "Book Management",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      ),
+    },
+    {
       href: "/admin/chat",
       label: "Live Chat",
       icon: (
@@ -236,6 +246,16 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
           <path d="M13 4h7v4h-7z" />
           <path d="M13 10h7v10h-7z" />
           <path d="M4 13h7v7H4z" />
+        </svg>
+      ),
+    },
+    {
+      href: "/student/books",
+      label: "Books",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
         </svg>
       ),
     },
