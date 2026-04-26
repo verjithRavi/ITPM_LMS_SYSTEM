@@ -23,10 +23,10 @@ exports.register = async (req, res) => {
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ message: "JWT_SECRET missing in server config." });
     }
-    if (role === "TUTOR") {
-      return res.status(403).json({ message: "Tutor accounts are created by admins." });
+    if (role === "TUTOR" || role === "ADMIN") {
+      return res.status(403).json({ message: "Only student accounts can self-register. Admin and tutor accounts are created internally." });
     }
-    if (role !== "STUDENT" && role !== "ADMIN") {
+    if (role !== "STUDENT") {
       return res.status(400).json({ message: "Invalid role for self-registration." });
     }
 
@@ -34,7 +34,7 @@ exports.register = async (req, res) => {
     if (existing) return res.status(409).json({ message: "Email already registered." });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const isStudent = role === "STUDENT";
+    const isStudent = true;
 
     const user = await createUserWithGeneratedId({
       fullName,
@@ -86,23 +86,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    const token = signToken(user);
-
-    return res.status(201).json({
-      token,
-      user: {
-        id: user._id,
-        userId: user.userId,
-        fullName: user.fullName,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        role: user.role,
-        approvalStatus: user.approvalStatus,
-        faculty: user.faculty,
-        year: user.year,
-        semester: user.semester,
-      },
-    });
   } catch (err) {
     return res.status(400).json({ message: err.message });
   }
