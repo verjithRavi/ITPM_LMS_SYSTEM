@@ -17,6 +17,19 @@ interface FormData {
   careerGoal: string;
 }
 
+interface FormErrors {
+  fullName?: string;
+  email?: string;
+  studyLevel?: string;
+  interests?: string;
+  programmingLevel?: string;
+  problemSolving?: string;
+  mathLogicSkills?: string;
+  workStyle?: string;
+  tools?: string;
+  careerGoal?: string;
+}
+
 interface CareerMatch {
   title: string;
   icon: React.ReactNode;
@@ -40,6 +53,7 @@ const CareerFinder: React.FC = () => {
     tools: [],
     careerGoal: ''
   });
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [showResults, setShowResults] = useState(false);
   const [careerMatches, setCareerMatches] = useState<CareerMatch[]>([]);
 
@@ -229,8 +243,168 @@ const CareerFinder: React.FC = () => {
     }
   ];
 
+  const validateField = (field: keyof FormData, value: string | string[]): string | undefined => {
+    switch (field) {
+      case 'fullName':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Full name is required';
+        }
+        if (typeof value === 'string' && value.trim().length < 2) {
+          return 'Full name must be at least 2 characters';
+        }
+        break;
+      
+      case 'email':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Email is required';
+        }
+        if (typeof value === 'string') {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value.trim())) {
+            return 'Please enter a valid email address';
+          }
+          if (!value.trim().toLowerCase().endsWith('@gmail.com')) {
+            return 'Email must end with @gmail.com';
+          }
+        }
+        break;
+      
+      case 'studyLevel':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Study level is required';
+        }
+        break;
+      
+      case 'interests':
+        if (!value || (Array.isArray(value) && value.length === 0)) {
+          return 'Please select at least one interest';
+        }
+        break;
+      
+      case 'programmingLevel':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Programming level is required';
+        }
+        break;
+      
+      case 'problemSolving':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Problem solving level is required';
+        }
+        break;
+      
+      case 'mathLogicSkills':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Math/logic skills level is required';
+        }
+        break;
+      
+      case 'workStyle':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Work style is required';
+        }
+        break;
+      
+      case 'tools':
+        if (!value || (Array.isArray(value) && value.length === 0)) {
+          return 'Please select at least one tool';
+        }
+        break;
+      
+      case 'careerGoal':
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          return 'Career goal is required';
+        }
+        break;
+      
+      default:
+        break;
+    }
+    return undefined;
+  };
+
+  const validateSection = (section: number): boolean => {
+    const errors: FormErrors = {};
+    
+    switch (section) {
+      case 1:
+        errors.fullName = validateField('fullName', formData.fullName);
+        errors.email = validateField('email', formData.email);
+        errors.studyLevel = validateField('studyLevel', formData.studyLevel);
+        break;
+      
+      case 2:
+        errors.interests = validateField('interests', formData.interests);
+        break;
+      
+      case 3:
+        errors.programmingLevel = validateField('programmingLevel', formData.programmingLevel);
+        errors.problemSolving = validateField('problemSolving', formData.problemSolving);
+        errors.mathLogicSkills = validateField('mathLogicSkills', formData.mathLogicSkills);
+        break;
+      
+      case 4:
+        errors.workStyle = validateField('workStyle', formData.workStyle);
+        break;
+      
+      case 5:
+        errors.tools = validateField('tools', formData.tools);
+        break;
+      
+      case 6:
+        errors.careerGoal = validateField('careerGoal', formData.careerGoal);
+        break;
+      
+      default:
+        break;
+    }
+    
+    setFormErrors(errors);
+    
+    // Check if there are any errors for the current section
+    const sectionErrors = Object.entries(errors).filter(([key, value]) => {
+      switch (section) {
+        case 1: return ['fullName', 'email', 'studyLevel'].includes(key);
+        case 2: return ['interests'].includes(key);
+        case 3: return ['programmingLevel', 'problemSolving', 'mathLogicSkills'].includes(key);
+        case 4: return ['workStyle'].includes(key);
+        case 5: return ['tools'].includes(key);
+        case 6: return ['careerGoal'].includes(key);
+        default: return false;
+      }
+    });
+    
+    return sectionErrors.length === 0;
+  };
+
+  const validateAllFields = (): boolean => {
+    const errors: FormErrors = {};
+    
+    // Validate all fields
+    errors.fullName = validateField('fullName', formData.fullName);
+    errors.email = validateField('email', formData.email);
+    errors.studyLevel = validateField('studyLevel', formData.studyLevel);
+    errors.interests = validateField('interests', formData.interests);
+    errors.programmingLevel = validateField('programmingLevel', formData.programmingLevel);
+    errors.problemSolving = validateField('problemSolving', formData.problemSolving);
+    errors.mathLogicSkills = validateField('mathLogicSkills', formData.mathLogicSkills);
+    errors.workStyle = validateField('workStyle', formData.workStyle);
+    errors.tools = validateField('tools', formData.tools);
+    errors.careerGoal = validateField('careerGoal', formData.careerGoal);
+    
+    setFormErrors(errors);
+    
+    // Check if there are any errors
+    return Object.values(errors).every(error => !error);
+  };
+
   const handleInputChange = (field: keyof FormData, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => ({ ...prev, [field]: undefined }));
+    }
   };
 
   const handleInterestToggle = (interest: string) => {
@@ -272,10 +446,21 @@ const CareerFinder: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate all fields before submission
+    if (!validateAllFields()) {
+      return;
+    }
+    
     calculateCareerMatches();
   };
 
   const nextSection = () => {
+    // Validate current section before proceeding
+    if (!validateSection(currentSection)) {
+      return;
+    }
+    
     if (currentSection < 7) {
       setCurrentSection(currentSection + 1);
     }
@@ -284,6 +469,8 @@ const CareerFinder: React.FC = () => {
   const prevSection = () => {
     if (currentSection > 1) {
       setCurrentSection(currentSection - 1);
+      // Clear errors when going back
+      setFormErrors({});
     }
   };
 
@@ -300,6 +487,7 @@ const CareerFinder: React.FC = () => {
       tools: [],
       careerGoal: ''
     });
+    setFormErrors({});
     setCurrentSection(1);
     setShowResults(false);
     setCareerMatches([]);
@@ -409,20 +597,34 @@ const CareerFinder: React.FC = () => {
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => handleInputChange('fullName', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    formErrors.fullName 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   required
                 />
+                {formErrors.fullName && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.fullName}</p>
+                )}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email (must end with @gmail.com)</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    formErrors.email 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   required
                 />
+                {formErrors.email && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>
+                )}
               </div>
               
               <div>
@@ -430,7 +632,11 @@ const CareerFinder: React.FC = () => {
                 <select
                   value={formData.studyLevel}
                   onChange={(e) => handleInputChange('studyLevel', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    formErrors.studyLevel 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   required
                 >
                   <option value="">Select your level</option>
@@ -440,6 +646,9 @@ const CareerFinder: React.FC = () => {
                   <option value="Final Year">Final Year</option>
                   <option value="Graduate">Graduate</option>
                 </select>
+                {formErrors.studyLevel && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.studyLevel}</p>
+                )}
               </div>
             </div>
           )}
@@ -449,6 +658,12 @@ const CareerFinder: React.FC = () => {
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">🟢 Interests</h2>
               <p className="text-gray-600 mb-4">What are you most interested in? (Select all that apply)</p>
+              
+              {formErrors.interests && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-600">{formErrors.interests}</p>
+                </div>
+              )}
               
               <div className="space-y-3">
                 {[
@@ -485,7 +700,11 @@ const CareerFinder: React.FC = () => {
                 <select
                   value={formData.programmingLevel}
                   onChange={(e) => handleInputChange('programmingLevel', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    formErrors.programmingLevel 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   required
                 >
                   <option value="">Select level</option>
@@ -493,6 +712,9 @@ const CareerFinder: React.FC = () => {
                   <option value="Intermediate">Intermediate</option>
                   <option value="Advanced">Advanced</option>
                 </select>
+                {formErrors.programmingLevel && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.programmingLevel}</p>
+                )}
               </div>
               
               <div>
@@ -500,7 +722,11 @@ const CareerFinder: React.FC = () => {
                 <select
                   value={formData.problemSolving}
                   onChange={(e) => handleInputChange('problemSolving', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    formErrors.problemSolving 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   required
                 >
                   <option value="">Select level</option>
@@ -508,6 +734,9 @@ const CareerFinder: React.FC = () => {
                   <option value="Medium">Medium</option>
                   <option value="High">High</option>
                 </select>
+                {formErrors.problemSolving && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.problemSolving}</p>
+                )}
               </div>
               
               <div>
@@ -515,7 +744,11 @@ const CareerFinder: React.FC = () => {
                 <select
                   value={formData.mathLogicSkills}
                   onChange={(e) => handleInputChange('mathLogicSkills', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    formErrors.mathLogicSkills 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
                   required
                 >
                   <option value="">Select level</option>
@@ -523,6 +756,9 @@ const CareerFinder: React.FC = () => {
                   <option value="Medium">Medium</option>
                   <option value="High">High</option>
                 </select>
+                {formErrors.mathLogicSkills && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.mathLogicSkills}</p>
+                )}
               </div>
             </div>
           )}
@@ -532,6 +768,12 @@ const CareerFinder: React.FC = () => {
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">🟢 Preferred Work Style</h2>
               <p className="text-gray-600 mb-4">How do you like to work?</p>
+              
+              {formErrors.workStyle && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-600">{formErrors.workStyle}</p>
+                </div>
+              )}
               
               <div className="space-y-3">
                 {[
@@ -564,6 +806,12 @@ const CareerFinder: React.FC = () => {
               <h2 className="text-xl font-semibold text-gray-800 mb-4">🟢 Tools You Know</h2>
               <p className="text-gray-600 mb-4">Which tools/technologies do you know? (Select all that apply)</p>
               
+              {formErrors.tools && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-600">{formErrors.tools}</p>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-3">
                 {[
                   'JavaScript',
@@ -595,6 +843,12 @@ const CareerFinder: React.FC = () => {
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">🟢 Career Goal</h2>
               <p className="text-gray-600 mb-4">What is your main goal?</p>
+              
+              {formErrors.careerGoal && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-600">{formErrors.careerGoal}</p>
+                </div>
+              )}
               
               <div className="space-y-3">
                 {[

@@ -61,24 +61,39 @@ export default function CoursesDisplay() {
   const handleAnswer = (questionId: string, answerId: string) => {
     if (!quizState) return;
     
+    const newAnswers = {
+      ...quizState.answers,
+      [questionId]: answerId
+    };
+    
     setQuizState({
       ...quizState,
-      answers: {
-        ...quizState.answers,
-        [questionId]: answerId
-      }
+      answers: newAnswers
     });
   };
 
   const nextQuestion = () => {
-    if (!quizState || !selectedCourse) return;
+    console.log('nextQuestion called');
+    console.log('quizState:', quizState);
+    console.log('selectedCourse:', selectedCourse);
     
-    if (quizState.currentQuestionIndex < selectedCourse.questions.length - 1) {
+    if (!quizState || !selectedCourse) {
+      console.log('Missing quizState or selectedCourse, returning');
+      return;
+    }
+    
+    const questionLength = selectedCourse.questions?.length || 0;
+    console.log('Current question index:', quizState.currentQuestionIndex);
+    console.log('Total questions:', questionLength);
+    
+    if (quizState.currentQuestionIndex < questionLength - 1) {
+      console.log('Moving to next question');
       setQuizState({
         ...quizState,
         currentQuestionIndex: quizState.currentQuestionIndex + 1
       });
     } else {
+      console.log('Last question reached, submitting quiz');
       submitQuiz();
     }
   };
@@ -101,7 +116,57 @@ export default function CoursesDisplay() {
       const endTime = new Date();
       let correctAnswersCount = 0;
       
-      selectedCourse.questions.forEach(question => {
+      // Ensure questions have proper IDs and answers for submission
+      const questionsWithIds = selectedCourse.questions?.map((q, index) => {
+        const questionWithId = {
+          ...q,
+          id: q.id || `question-${index}`
+        };
+        
+        // Ensure question has answers and normalize answer IDs
+        if (questionWithId.answers && questionWithId.answers.length > 0) {
+          // Normalize answer IDs to use 'id' field, fallback to '_id'
+          questionWithId.answers = questionWithId.answers.map((answer, answerIndex) => ({
+            ...answer,
+            id: answer.id || (answer as any)._id || `answer-${index}-${answerIndex}`
+          }));
+        } else {
+          // Fallback answers if none exist
+          questionWithId.answers = [
+            {
+              id: `answer-${index}-0`,
+              text: "Option A",
+              isCorrect: true
+            },
+            {
+              id: `answer-${index}-1`, 
+              text: "Option B",
+              isCorrect: false
+            },
+            {
+              id: `answer-${index}-2`,
+              text: "Option C", 
+              isCorrect: false
+            },
+            {
+              id: `answer-${index}-3`,
+              text: "Option D",
+              isCorrect: false
+            }
+          ];
+        }
+        
+        return questionWithId;
+      }) || [];
+      
+      // Check if questions exist and have valid data
+      if (!questionsWithIds || questionsWithIds.length === 0) {
+        setQuizState({ ...quizState, endTime });
+        setShowResults(true);
+        return;
+      }
+      
+      questionsWithIds.forEach(question => {
         const userAnswerId = quizState.answers[question.id];
         const correctAnswer = question.answers.find(a => a.isCorrect);
         if (userAnswerId === correctAnswer?.id) {
@@ -109,7 +174,7 @@ export default function CoursesDisplay() {
         }
       });
       
-      const calculatedScore = Math.round((correctAnswersCount / selectedCourse.questions.length) * 100);
+      const calculatedScore = Math.round((correctAnswersCount / questionsWithIds.length) * 100);
       
       // Save progress
       const userId = "demo-user"; // In real app, get from auth
@@ -164,10 +229,118 @@ export default function CoursesDisplay() {
   }
 
   if (selectedCourse && quizState) {
-    const currentQuestion = selectedCourse.questions[quizState.currentQuestionIndex];
-    const quizProgress = ((quizState.currentQuestionIndex + 1) / selectedCourse.questions.length) * 100;
+    // Ensure questions have proper IDs and answers
+    const questionsWithIds = selectedCourse.questions?.map((q, index) => {
+      const questionWithId = {
+        ...q,
+        id: q.id || `question-${index}`
+      };
+      
+      // Ensure question has answers and normalize answer IDs
+      if (questionWithId.answers && questionWithId.answers.length > 0) {
+        // Normalize answer IDs to use 'id' field, fallback to '_id'
+        questionWithId.answers = questionWithId.answers.map((answer, answerIndex) => ({
+          ...answer,
+          id: answer.id || (answer as any)._id || `answer-${index}-${answerIndex}`
+        }));
+      } else {
+        // Fallback answers if none exist
+        questionWithId.answers = [
+          {
+            id: `answer-${index}-0`,
+            text: "Option A",
+            isCorrect: true
+          },
+          {
+            id: `answer-${index}-1`, 
+            text: "Option B",
+            isCorrect: false
+          },
+          {
+            id: `answer-${index}-2`,
+            text: "Option C", 
+            isCorrect: false
+          },
+          {
+            id: `answer-${index}-3`,
+            text: "Option D",
+            isCorrect: false
+          }
+        ];
+      }
+      
+      return questionWithId;
+    }) || [];
+    
+    const currentQuestion = questionsWithIds[quizState.currentQuestionIndex];
+    const quizProgress = questionsWithIds.length > 0 
+      ? ((quizState.currentQuestionIndex + 1) / questionsWithIds.length) * 100 
+      : 0;
+    
+    // If currentQuestion is undefined, show a message
+    if (!currentQuestion) {
+      return (
+        <div className="max-w-2xl mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Course Quiz</h2>
+            <div className="text-center py-8">
+              <p className="text-gray-600">No questions available for this course.</p>
+              <button
+                onClick={() => setSelectedCourse(null)}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Back to Courses
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
     
     if (showResults) {
+      // Normalize questions for results display (same logic as quiz)
+      const questionsWithIds = selectedCourse.questions?.map((q, index) => {
+        const questionWithId = {
+          ...q,
+          id: q.id || `question-${index}`
+        };
+        
+        // Ensure question has answers and normalize answer IDs
+        if (questionWithId.answers && questionWithId.answers.length > 0) {
+          // Normalize answer IDs to use 'id' field, fallback to '_id'
+          questionWithId.answers = questionWithId.answers.map((answer, answerIndex) => ({
+            ...answer,
+            id: answer.id || (answer as any)._id || `answer-${index}-${answerIndex}`
+          }));
+        } else {
+          // Fallback answers if none exist
+          questionWithId.answers = [
+            {
+              id: `answer-${index}-0`,
+              text: "Option A",
+              isCorrect: true
+            },
+            {
+              id: `answer-${index}-1`, 
+              text: "Option B",
+              isCorrect: false
+            },
+            {
+              id: `answer-${index}-2`,
+              text: "Option C", 
+              isCorrect: false
+            },
+            {
+              id: `answer-${index}-3`,
+              text: "Option D",
+              isCorrect: false
+            }
+          ];
+        }
+        
+        return questionWithId;
+      }) || [];
+      
       return (
         <div className="max-w-2xl mx-auto p-6">
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -178,19 +351,20 @@ export default function CoursesDisplay() {
                 {progress?.score || 0}%
               </div>
               <div className="text-gray-600">
-                You got {progress?.correctAnswers || 0} out of {selectedCourse.questions.length} questions correct
+                You got {progress?.correctAnswers || 0} out of {questionsWithIds.length || 0} questions correct
               </div>
             </div>
             
+                        
             <div className="space-y-4 mb-6">
-              {selectedCourse.questions.map((question, index) => {
+              {questionsWithIds.map((question, index) => {
                 const userAnswerId = quizState.answers[question.id];
                 const correctAnswer = question.answers.find(a => a.isCorrect);
                 const userAnswer = question.answers.find(a => a.id === userAnswerId);
                 const isCorrect = userAnswerId === correctAnswer?.id;
                 
                 return (
-                  <div key={question.id} className={`p-4 rounded-lg border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                  <div key={question.id || `question-${index}`} className={`p-4 rounded-lg border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
                     <div className="flex items-start space-x-3">
                       <div className={`mt-1 w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold ${isCorrect ? 'bg-green-500' : 'bg-red-500'}`}>
                         {isCorrect ? '✓' : '✗'}
@@ -252,7 +426,7 @@ export default function CoursesDisplay() {
             </div>
             
             <div className="text-sm text-gray-600">
-              Question {quizState.currentQuestionIndex + 1} of {selectedCourse.questions.length}
+              Question {quizState.currentQuestionIndex + 1} of {questionsWithIds.length}
             </div>
           </div>
           
@@ -262,9 +436,9 @@ export default function CoursesDisplay() {
             </h3>
             
             <div className="space-y-3">
-              {currentQuestion.answers.map((answer) => (
+              {currentQuestion.answers.map((answer, index) => (
                 <label
-                  key={answer.id}
+                  key={answer.id || `answer-${index}`}
                   className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
                     quizState.answers[currentQuestion.id] === answer.id
                       ? 'border-blue-500 bg-blue-50'
@@ -298,9 +472,10 @@ export default function CoursesDisplay() {
               disabled={!quizState.answers[currentQuestion.id]}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {quizState.currentQuestionIndex === selectedCourse.questions.length - 1 ? 'Submit' : 'Next'}
+              {quizState.currentQuestionIndex === questionsWithIds.length - 1 ? 'Submit' : 'Next'}
             </button>
-          </div>
+            
+                      </div>
         </div>
       </div>
     );

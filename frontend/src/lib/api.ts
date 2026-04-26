@@ -153,7 +153,11 @@ export async function apiFetch<T>(
       
       // For chat endpoints
       if (path.includes('/chat')) {
-        return { chats: [], messages: [], unreadCount: 0 } as T;
+        return {
+          chats: [],
+          messages: [],
+          unreadCount: 0
+        } as T;
       }
       
       // For notifications

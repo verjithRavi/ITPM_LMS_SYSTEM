@@ -56,7 +56,7 @@ let sharedMockCourses: Course[] = [
       },
       {
         id: 'q4',
-        questionText: 'What is the purpose of useEffect hook?',
+        questionText: 'What is the purpose of the useEffect hook?',
         answers: [
           { id: 'a13', text: 'To manage state', isCorrect: false },
           { id: 'a14', text: 'To handle side effects', isCorrect: true },
@@ -108,9 +108,45 @@ export const courseApi = {
   async getCourses(filter?: CourseFilter): Promise<Course[]> {
     console.log('getCourses called with filter:', filter);
     
-    // For development, always use mock data to ensure functionality
+    try {
+      // Try to use real backend first
+      const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+      const queryParams = new URLSearchParams();
+      
+      if (filter?.searchQuery) {
+        queryParams.append('searchQuery', filter.searchQuery);
+      }
+      if (filter?.category) {
+        queryParams.append('category', filter.category);
+      }
+      
+      const response = await fetch(`http://localhost:5001/api/courses?${queryParams}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Using real backend data:', data);
+        
+        // Transform backend data to frontend format
+        const courses = data.courses || data;
+        const transformedCourses = Array.isArray(courses) ? courses.map((course: any) => ({
+          ...course,
+          questions: course.questionsArray || [] // Use questionsArray from backend
+        })) : courses;
+        
+        return transformedCourses;
+      }
+    } catch (error) {
+      console.log('Backend not available, falling back to mock data');
+    }
+    
+    // Fallback to mock data if backend fails
     console.log('Using mock data for development - backend not required');
-    const mockData = this.getMockCourses(filter);
+    const mockData = courseApi.getMockCourses(filter);
     console.log('Returning mock data:', mockData);
     return mockData;
   },
@@ -118,8 +154,35 @@ export const courseApi = {
   // Get a single course by ID
   async getCourseById(id: string): Promise<Course> {
     console.log('getCourseById called with id:', id);
+    
+    try {
+      // Try to use real backend first
+      const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+      
+      const response = await fetch(`http://localhost:5001/api/courses/${id}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Using real backend data:', data);
+        
+        // Transform backend data to frontend format
+        return {
+          ...data,
+          questions: data.questionsArray || [] // Use questionsArray from backend
+        };
+      }
+    } catch (error) {
+      console.log('Backend not available, falling back to mock data');
+    }
+    
+    // Fallback to mock data if backend fails
     console.log('Using mock data for development - backend not required');
-    const mockCourses = this.getMockCourses();
+    const mockCourses = courseApi.getMockCourses();
     const course = mockCourses.find((c: Course) => c._id === id);
     if (!course) throw new Error('Course not found');
     console.log('Returning mock course:', course);
@@ -129,20 +192,70 @@ export const courseApi = {
   // Create a new course
   async createCourse(courseData: CourseFormData): Promise<Course> {
     console.log('createCourse called with data:', courseData);
+    
+    try {
+      // Try to use real backend first
+      const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+      
+      const response = await fetch(`http://localhost:5001/api/courses`, {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          title: courseData.title,
+          description: courseData.description,
+          imageUrl: courseData.imageUrl,
+          questions: courseData.questions?.length || 0,
+          questionsArray: courseData.questions || [],
+          instructor: 'Admin',
+          duration: 'Self-paced',
+          level: 'beginner',
+          category: 'Programming'
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Course created via backend:', data);
+        // Transform backend response to frontend format
+        return {
+          _id: data._id,
+          title: data.title,
+          description: data.description,
+          imageUrl: courseData.imageUrl || 'https://picsum.photos/seed/course/400/200.jpg',
+          questions: courseData.questions?.map((q: any) => ({
+            ...q,
+            id: q.id || Date.now().toString(),
+            answers: q.answers?.map((a: any) => ({
+              ...a,
+              id: a.id || Date.now().toString()
+            }))
+          })) || [],
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        };
+      }
+    } catch (error) {
+      console.log('Backend not available, using mock creation');
+    }
+    
+    // Fallback to mock data if backend fails
     console.log('Adding course to shared storage');
     const newCourse: Course = {
       _id: Date.now().toString(),
       title: courseData.title,
       description: courseData.description,
-      imageUrl: courseData.imageUrl,
-      questions: courseData.questions.map(q => ({
+      imageUrl: courseData.imageUrl || 'https://picsum.photos/seed/course/400/200.jpg',
+      questions: courseData.questions?.map((q: any) => ({
         ...q,
         id: q.id || Date.now().toString() + Math.random().toString(),
-        answers: q.answers.map(a => ({
+        answers: q.answers?.map((a: any) => ({
           ...a,
           id: a.id || Date.now().toString() + Math.random().toString()
         }))
-      })),
+      })) || [],
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -157,17 +270,67 @@ export const courseApi = {
   // Update an existing course
   async updateCourse(id: string, courseData: Partial<CourseFormData>): Promise<Course> {
     console.log('updateCourse called with id:', id, 'data:', courseData);
+    
+    try {
+      // Try to use real backend first
+      const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+      
+      const response = await fetch(`http://localhost:5001/api/courses/${id}`, {
+        method: 'PUT',
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          title: courseData.title,
+          description: courseData.description,
+          imageUrl: courseData.imageUrl,
+          questions: courseData.questions?.length || 0,
+          questionsArray: courseData.questions || [],
+          instructor: 'Admin',
+          duration: 'Self-paced',
+          level: 'beginner',
+          category: 'Programming'
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Course updated via backend:', data);
+        // Transform backend response to frontend format
+        return {
+          _id: data._id,
+          title: data.title,
+          description: data.description,
+          imageUrl: courseData.imageUrl || 'https://picsum.photos/seed/course/400/200.jpg',
+          questions: courseData.questions?.map((q: any) => ({
+            ...q,
+            id: q.id || Date.now().toString(),
+            answers: q.answers?.map((a: any) => ({
+              ...a,
+              id: a.id || Date.now().toString()
+            }))
+          })) || [],
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        };
+      }
+    } catch (error) {
+      console.log('Backend not available, using mock update');
+    }
+    
+    // Fallback to mock data if backend fails
     console.log('Updating course in shared storage');
     const courseIndex = sharedMockCourses.findIndex((c: Course) => c._id === id);
     if (courseIndex === -1) throw new Error('Course not found');
     
-    const updatedCourse = { 
+    const updatedCourse: Course = { 
       ...sharedMockCourses[courseIndex], 
       ...courseData,
-      questions: courseData.questions?.map(q => ({
+      questions: courseData.questions?.map((q: any) => ({
         ...q,
         id: q.id || Date.now().toString() + Math.random().toString(),
-        answers: q.answers.map(a => ({
+        answers: q.answers?.map((a: any) => ({
           ...a,
           id: a.id || Date.now().toString() + Math.random().toString()
         }))
@@ -185,6 +348,28 @@ export const courseApi = {
   // Delete a course
   async deleteCourse(id: string): Promise<void> {
     console.log('deleteCourse called with id:', id);
+    
+    try {
+      // Try to use real backend first
+      const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+      
+      const response = await fetch(`http://localhost:5001/api/courses/${id}`, {
+        method: 'DELETE',
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        }
+      });
+      
+      if (response.ok) {
+        console.log('Course deleted via backend');
+        return;
+      }
+    } catch (error) {
+      console.log('Backend not available, using mock deletion');
+    }
+    
+    // Fallback to mock data if backend fails
     console.log('Removing course from shared storage');
     const courseIndex = sharedMockCourses.findIndex((c: Course) => c._id === id);
     if (courseIndex !== -1) {
@@ -199,7 +384,7 @@ export const courseApi = {
   async getCourseProgress(courseId: string, userId: string): Promise<CourseProgress | null> {
     console.log('getCourseProgress called with courseId:', courseId, 'userId:', userId);
     console.log('Using mock data for development - backend not required');
-    const mockProgress = this.getMockProgress(courseId, userId);
+    const mockProgress = courseApi.getMockProgress(courseId, userId);
     console.log('Returning mock progress:', mockProgress);
     return mockProgress;
   },
@@ -251,7 +436,7 @@ export const courseApi = {
         if (!question.answers || question.answers.length !== 4) {
           errors.push(`Question ${qIndex + 1} must have exactly 4 answers`);
         } else {
-          const correctAnswers = question.answers.filter(a => a.isCorrect);
+          const correctAnswers = question.answers.filter((a: any) => a.isCorrect);
           if (correctAnswers.length !== 1) {
             errors.push(`Question ${qIndex + 1} must have exactly 1 correct answer`);
           }
