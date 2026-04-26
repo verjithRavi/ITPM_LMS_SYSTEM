@@ -31,18 +31,19 @@ type AssignmentSubmissionOverview = {
 };
 type AssignmentReviewForm = {
   criteriaScores: Array<{ criterion: string; marksAwarded: string; comment: string }>;
-  comments: string;
-  overallFeedback: string;
 };
+type SubmissionFilter = "ALL" | "SUBMITTED" | "NOT_SUBMITTED";
+type SubmittedReviewFilter = "ALL" | "GRADED" | "PENDING";
 
 const shell = "rounded-[28px] border border-blue-100 bg-white shadow-[0_20px_60px_rgba(37,99,235,0.08)]";
 const card = "rounded-2xl border border-blue-100 bg-white p-4";
 const input = "w-full rounded-2xl border border-blue-100 bg-blue-50/40 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500";
 const overlay = "fixed inset-0 z-[90] overflow-y-auto bg-slate-950/80 px-4 py-8 backdrop-blur-sm";
 const modalCard = "mx-auto w-full max-w-4xl rounded-[30px] border border-blue-100 bg-white p-6 shadow-[0_30px_90px_rgba(37,99,235,0.12)]";
+const ASSIGNMENT_REVIEW_COMMENT_MAX_LENGTH = 200;
 
 const dt = (value: string) => new Date(value).toLocaleString();
-const emptyAssignmentReview = (): AssignmentReviewForm => ({ criteriaScores: [{ criterion: "", marksAwarded: "", comment: "" }], comments: "", overallFeedback: "" });
+const emptyAssignmentReview = (): AssignmentReviewForm => ({ criteriaScores: [{ criterion: "", marksAwarded: "", comment: "" }] });
 const totalCriteriaMarks = (criteriaScores: AssignmentReviewForm["criteriaScores"]) => criteriaScores.reduce((sum, item) => sum + (Number(item.marksAwarded) || 0), 0);
 
 function StatCard({ label, value, note }: { label: string; value: string; note: string }) {
@@ -70,6 +71,8 @@ function TutorAssignmentSubmissionsContent() {
   const [savingAssignmentReview, setSavingAssignmentReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [submissionFilter, setSubmissionFilter] = useState<SubmissionFilter>("ALL");
+  const [submittedReviewFilter, setSubmittedReviewFilter] = useState<SubmittedReviewFilter>("ALL");
 
   const backHref = useMemo(() => {
     const params = new URLSearchParams();
@@ -80,6 +83,19 @@ function TutorAssignmentSubmissionsContent() {
     const query = params.toString();
     return `/tutor/assignments${query ? `?${query}` : ""}`;
   }, [searchParams]);
+
+  const filteredSubmissions = useMemo(() => {
+    if (!overview) return [];
+    return overview.submissions.filter((row) => {
+      if (submissionFilter === "NOT_SUBMITTED") return !row.submitted;
+      if (submissionFilter === "SUBMITTED") {
+        if (!row.submitted) return false;
+        if (submittedReviewFilter === "GRADED") return row.gradingStatus === "GRADED";
+        if (submittedReviewFilter === "PENDING") return row.gradingStatus !== "GRADED";
+      }
+      return true;
+    });
+  }, [overview, submissionFilter, submittedReviewFilter]);
 
   useEffect(() => {
     async function boot() {
@@ -110,22 +126,31 @@ function TutorAssignmentSubmissionsContent() {
       criteriaScores: row.criteriaScores.length > 0
         ? row.criteriaScores.map((item) => ({ criterion: item.criterion, marksAwarded: String(item.marksAwarded), comment: item.comment }))
         : [{ criterion: "", marksAwarded: "", comment: "" }],
-      comments: row.comments || "",
-      overallFeedback: row.overallFeedback || "",
     });
   }
 
   async function saveAssignmentReview() {
     if (!token || !overview || !selectedSubmission?.submissionId) return;
+    const currentTotal = totalCriteriaMarks(assignmentReviewForm.criteriaScores);
+    if (currentTotal !== overview.assignment.totalMarks) {
+      setError(`Total criteria marks must be exactly ${overview.assignment.totalMarks}.`);
+      setSuccess(null);
+      return;
+    }
+    if (assignmentReviewForm.criteriaScores.some((item) => item.comment.trim().length > ASSIGNMENT_REVIEW_COMMENT_MAX_LENGTH)) {
+      setError(`Each comment must be ${ASSIGNMENT_REVIEW_COMMENT_MAX_LENGTH} characters or fewer.`);
+      setSuccess(null);
+      return;
+    }
     setSavingAssignmentReview(true);
     setError(null);
     setSuccess(null);
     try {
       const payload = {
         criteriaScores: assignmentReviewForm.criteriaScores,
-        totalMarksAwarded: totalCriteriaMarks(assignmentReviewForm.criteriaScores),
-        comments: assignmentReviewForm.comments,
-        overallFeedback: assignmentReviewForm.overallFeedback,
+        totalMarksAwarded: currentTotal,
+        comments: "",
+        overallFeedback: "",
       };
       const data = await apiFetch<{ submission: Omit<AssignmentSubmissionRow, "student" | "submitted" | "isLate" | "responseType" | "status" | "submissionId">; message: string }>(
         `/api/assignments/${overview.assignment._id}/submissions/${selectedSubmission.submissionId}/review`,
@@ -186,10 +211,63 @@ function TutorAssignmentSubmissionsContent() {
                   <div className="text-sm font-semibold uppercase tracking-wide text-blue-700">Student Submission List</div>
                   <p className="mt-2 text-sm text-slate-500">Each card shows the student, submission status, uploaded response, and grading state.</p>
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionFilter("ALL")}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${submissionFilter === "ALL" ? "bg-blue-600 text-white" : "border border-blue-100 bg-white text-slate-700 hover:bg-blue-50"}`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionFilter("SUBMITTED")}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${submissionFilter === "SUBMITTED" ? "bg-blue-600 text-white" : "border border-blue-100 bg-white text-slate-700 hover:bg-blue-50"}`}
+                  >
+                    Submitted
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionFilter("NOT_SUBMITTED")}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${submissionFilter === "NOT_SUBMITTED" ? "bg-blue-600 text-white" : "border border-blue-100 bg-white text-slate-700 hover:bg-blue-50"}`}
+                  >
+                    Not Submitted
+                  </button>
+                </div>
               </div>
 
+              {submissionFilter === "SUBMITTED" ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubmittedReviewFilter("ALL")}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${submittedReviewFilter === "ALL" ? "bg-emerald-600 text-white" : "border border-emerald-100 bg-white text-slate-700 hover:bg-emerald-50"}`}
+                  >
+                    All Submitted
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubmittedReviewFilter("GRADED")}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${submittedReviewFilter === "GRADED" ? "bg-emerald-600 text-white" : "border border-emerald-100 bg-white text-slate-700 hover:bg-emerald-50"}`}
+                  >
+                    Evaluated
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubmittedReviewFilter("PENDING")}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold ${submittedReviewFilter === "PENDING" ? "bg-emerald-600 text-white" : "border border-emerald-100 bg-white text-slate-700 hover:bg-emerald-50"}`}
+                  >
+                    Not Evaluated
+                  </button>
+                </div>
+              ) : null}
+
               <div className="mt-6 space-y-3">
-                {overview.submissions.map((row) => (
+                {filteredSubmissions.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-blue-200 bg-blue-50/50 px-4 py-8 text-center text-sm text-slate-600">
+                    No submissions match the selected filter.
+                  </div>
+                ) : filteredSubmissions.map((row) => (
                   <div key={row.student._id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-[0_10px_30px_rgba(37,99,235,0.08)]">
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="space-y-2">
@@ -243,11 +321,16 @@ function TutorAssignmentSubmissionsContent() {
       {selectedSubmission && overview ? (
         <div className={overlay}>
           <div className={modalCard}>
+            {(() => {
+              const currentTotal = totalCriteriaMarks(assignmentReviewForm.criteriaScores);
+              const hasExactTotal = currentTotal === overview.assignment.totalMarks;
+              return (
+                <>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs font-medium uppercase tracking-[0.24em] text-blue-700">Evaluate Assignment</div>
                 <h2 className="mt-3 text-2xl font-semibold text-slate-900">{selectedSubmission.student.fullName}</h2>
-                <p className="mt-2 text-sm text-slate-600">Give criterion-based marks, comments, and overall feedback for this assignment submission.</p>
+                <p className="mt-2 text-sm text-slate-600">Give criterion-based marks and comments for this assignment submission.</p>
               </div>
               <button type="button" onClick={() => setSelectedSubmission(null)} className="rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50">
                 Close
@@ -270,19 +353,25 @@ function TutorAssignmentSubmissionsContent() {
                 <div key={`criterion-${index}`} className="grid gap-3 rounded-2xl border border-blue-100 bg-slate-50 p-4 md:grid-cols-[1.5fr,0.5fr,1.5fr,auto]">
                   <input className={input} placeholder="Criterion" value={criterion.criterion} onChange={(e) => setAssignmentReviewForm((current) => ({ ...current, criteriaScores: current.criteriaScores.map((item, itemIndex) => itemIndex === index ? { ...item, criterion: e.target.value } : item) }))} />
                   <input className={input} type="number" min="0" max={overview.assignment.totalMarks} placeholder="Marks" value={criterion.marksAwarded} onChange={(e) => setAssignmentReviewForm((current) => ({ ...current, criteriaScores: current.criteriaScores.map((item, itemIndex) => itemIndex === index ? { ...item, marksAwarded: e.target.value } : item) }))} />
-                  <input className={input} placeholder="Comment" value={criterion.comment} onChange={(e) => setAssignmentReviewForm((current) => ({ ...current, criteriaScores: current.criteriaScores.map((item, itemIndex) => itemIndex === index ? { ...item, comment: e.target.value } : item) }))} />
+                  <div><input className={input} placeholder="Comment" value={criterion.comment} onChange={(e) => setAssignmentReviewForm((current) => ({ ...current, criteriaScores: current.criteriaScores.map((item, itemIndex) => itemIndex === index ? { ...item, comment: e.target.value } : item) }))} maxLength={ASSIGNMENT_REVIEW_COMMENT_MAX_LENGTH} /><p className="mt-1 text-right text-xs text-slate-500">{criterion.comment.length}/{ASSIGNMENT_REVIEW_COMMENT_MAX_LENGTH}</p></div>
                   {assignmentReviewForm.criteriaScores.length > 1 ? <button type="button" onClick={() => setAssignmentReviewForm((current) => ({ ...current, criteriaScores: current.criteriaScores.filter((_, itemIndex) => itemIndex !== index) }))} className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">Remove</button> : null}
                 </div>
               ))}
-              <textarea className={input} rows={3} placeholder="Marker comments" value={assignmentReviewForm.comments} onChange={(e) => setAssignmentReviewForm((current) => ({ ...current, comments: e.target.value }))} />
-              <textarea className={input} rows={4} placeholder="Overall feedback" value={assignmentReviewForm.overallFeedback} onChange={(e) => setAssignmentReviewForm((current) => ({ ...current, overallFeedback: e.target.value }))} />
+              {!hasExactTotal ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  Total criteria marks must be exactly {overview.assignment.totalMarks}. Current total is {currentTotal}.
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => void saveAssignmentReview()} disabled={savingAssignmentReview} className="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-70">
+                <button type="button" onClick={() => void saveAssignmentReview()} disabled={savingAssignmentReview || !hasExactTotal} className="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-70">
                   {savingAssignmentReview ? "Saving..." : "Save Evaluation"}
                 </button>
-                <div className="rounded-full border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-slate-700">Total: {totalCriteriaMarks(assignmentReviewForm.criteriaScores)} / {overview.assignment.totalMarks}</div>
+                <div className={`rounded-full border px-4 py-3 text-sm ${hasExactTotal ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-600"}`}>Total: {currentTotal} / {overview.assignment.totalMarks}</div>
               </div>
             </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       ) : null}
