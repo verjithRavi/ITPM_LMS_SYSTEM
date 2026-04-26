@@ -1,6 +1,7 @@
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PHONE_REGEX = /^\d{10}$/;
 export const FULL_NAME_REGEX = /^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/;
+export const MODULE_NAME_REGEX = /^[A-Za-z]+(?: [A-Za-z]+)*$/;
 
 export function validateRequired(value: string) {
   return value.trim() ? "" : "This field is required.";
@@ -40,4 +41,16 @@ export function validateIdentifier(value: string) {
     return "Enter a valid email address like example@gmail.com.";
   }
   return "";
+}
+
+export function validateModuleName(value: string) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "This field is required.";
+  return MODULE_NAME_REGEX.test(trimmedValue) ? "" : "Module name must contain letters only. Numbers and special characters are not allowed.";
+}
+
+export function validateModuleDescription(value: string) {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return "This field is required.";
+  return trimmedValue.length <= 200 ? "" : "Module description must be 200 characters or less.";
 }
