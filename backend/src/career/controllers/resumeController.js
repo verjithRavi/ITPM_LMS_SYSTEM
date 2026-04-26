@@ -27,7 +27,7 @@ const createResumeScore = async (req, res, next) => {
     });
 
     const populatedScore = await ResumeScore.findById(savedScore._id)
-      .populate("cvId", "status updatedAt")
+      .populate("cvId", "data.personal.fullName status updatedAt")
       .populate("targetRoleId", "title keywords");
 
     res.status(201).json({
@@ -44,7 +44,7 @@ const getResumeScoreHistory = async (req, res, next) => {
   try {
     const userId = req.user._id.toString();
     const history = await ResumeScore.find({ userId })
-      .populate("cvId", "status updatedAt")
+      .populate("cvId", "data.personal.fullName status updatedAt")
       .populate("targetRoleId", "title keywords")
       .sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: history.length, data: history });

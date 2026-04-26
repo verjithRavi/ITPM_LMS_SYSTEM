@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
@@ -79,6 +79,14 @@ type BackendCv = {
 };
 
 export default function CVCreatePage() {
+  return (
+    <Suspense fallback={<div className="px-4 py-6 text-sm text-slate-500">Loading...</div>}>
+      <CVCreateContent />
+    </Suspense>
+  );
+}
+
+function CVCreateContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();

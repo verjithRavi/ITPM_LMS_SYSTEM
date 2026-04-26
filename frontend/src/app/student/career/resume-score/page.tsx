@@ -9,11 +9,11 @@ function careerFetch<T = unknown>(path: string, options: RequestInit = {}) {
 }
 
 type SavedCV = { _id: string; data?: { personal?: { fullName?: string } }; templateId?: unknown };
-type CareerRole = { _id: string; title: string };
+type JobRole = { _id: string; title: string };
 type ScoreHistory = {
   _id: string;
   cvId: string | { _id: string; data?: { personal?: { fullName?: string } } };
-  targetRoleId: string | { _id: string; title?: string };
+  targetRoleId: string | JobRole;
   score: number;
   missingKeywords: string[];
   suggestions: string[];
@@ -34,7 +34,7 @@ function scoreBg(score: number) {
 
 export default function ResumeScorePage() {
   const [cvList, setCvList] = useState<SavedCV[]>([]);
-  const [roles, setRoles] = useState<CareerRole[]>([]);
+  const [roles, setRoles] = useState<JobRole[]>([]);
   const [history, setHistory] = useState<ScoreHistory[]>([]);
   const [selectedCv, setSelectedCv] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
@@ -47,7 +47,7 @@ export default function ResumeScorePage() {
       try {
         const [cvsRes, rolesRes, histRes] = await Promise.all([
           careerFetch<{ data: SavedCV[] }>("/cv"),
-          careerFetch<{ data: CareerRole[] }>("/careers"),
+          careerFetch<{ data: JobRole[] }>("/jobs"),
           careerFetch<{ data: ScoreHistory[] }>("/resume/scores/history"),
         ]);
         setCvList(cvsRes.data || []);
@@ -99,7 +99,7 @@ export default function ResumeScorePage() {
 
   const getRoleName = (roleId: unknown) => {
     if (typeof roleId === "object" && roleId && "title" in (roleId as object)) {
-      return (roleId as { title?: string }).title || "Unknown Role";
+      return (roleId as JobRole).title || "Unknown Role";
     }
     const found = roles.find((r) => r._id === roleId);
     return found?.title || "Unknown Role";
