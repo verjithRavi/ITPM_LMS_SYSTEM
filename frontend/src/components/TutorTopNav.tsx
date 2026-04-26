@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/auth";
+import { validateConfirmPassword, validatePassword, validateRequired } from "@/lib/formValidation";
 import { isWithinReminderWindow, playReminderAlarm } from "@/lib/reminder";
 import ProfileMenu, { type ProfileUser } from "@/components/ProfileMenu";
 import SystemLogo from "@/components/SystemLogo";
@@ -30,7 +31,9 @@ export default function TutorTopNav({ fullName }: TutorTopNavProps) {
   const [showPasswordPopup, setShowPasswordPopup] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState<Record<string, string>>({});
   const [changingPassword, setChangingPassword] = useState(false);
 
   async function loadUnread() {
@@ -142,8 +145,13 @@ export default function TutorTopNav({ fullName }: TutorTopNavProps) {
     }
 
     setPasswordError(null);
-    if (!currentPassword || !newPassword) {
-      setPasswordError("Current password and new password are required.");
+    const nextErrors: Record<string, string> = {
+      currentPassword: validateRequired(currentPassword),
+      newPassword: validatePassword(newPassword),
+      confirmPassword: validateConfirmPassword(newPassword, confirmPassword),
+    };
+    setPasswordFieldErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) {
       return;
     }
 
@@ -159,6 +167,8 @@ export default function TutorTopNav({ fullName }: TutorTopNavProps) {
       );
       setCurrentPassword("");
       setNewPassword("");
+      setConfirmPassword("");
+      setPasswordFieldErrors({});
       setShowPasswordPopup(false);
       await loadUser();
     } catch (err: unknown) {
@@ -272,15 +282,44 @@ export default function TutorTopNav({ fullName }: TutorTopNavProps) {
                 placeholder="Current password (User ID)"
                 type="password"
                 value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setCurrentPassword(value);
+                  setPasswordFieldErrors((current) => ({ ...current, currentPassword: validateRequired(value) }));
+                }}
               />
+              {passwordFieldErrors.currentPassword ? <p className="text-xs font-medium text-red-500">{passwordFieldErrors.currentPassword}</p> : null}
               <input
                 className="w-full rounded-lg border border-white/10 bg-white/6 p-2.5 text-sm text-white outline-none placeholder:text-slate-400"
                 placeholder="New password"
                 type="password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setNewPassword(value);
+                  setPasswordFieldErrors((current) => ({
+                    ...current,
+                    newPassword: validatePassword(value),
+                    confirmPassword: confirmPassword ? validateConfirmPassword(value, confirmPassword) : current.confirmPassword,
+                  }));
+                }}
               />
+              {passwordFieldErrors.newPassword ? <p className="text-xs font-medium text-red-500">{passwordFieldErrors.newPassword}</p> : null}
+              <input
+                className="w-full rounded-lg border border-white/10 bg-white/6 p-2.5 text-sm text-white outline-none placeholder:text-slate-400"
+                placeholder="Confirm new password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setConfirmPassword(value);
+                  setPasswordFieldErrors((current) => ({
+                    ...current,
+                    confirmPassword: validateConfirmPassword(newPassword, value),
+                  }));
+                }}
+              />
+              {passwordFieldErrors.confirmPassword ? <p className="text-xs font-medium text-red-500">{passwordFieldErrors.confirmPassword}</p> : null}
               {passwordError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {passwordError}
