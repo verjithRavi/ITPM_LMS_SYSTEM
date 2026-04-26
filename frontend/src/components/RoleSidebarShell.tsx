@@ -280,6 +280,16 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
       ),
     },
     {
+      href: "/student/career-finder",
+      label: "Career Finder",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+    },
+    {
       href: "/student/events",
       label: "Events",
       icon: (
@@ -389,6 +399,18 @@ const NAVIGATION: Record<RoleShellVariant, NavigationItem[]> = {
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
           <circle cx="12" cy="12" r="10" />
           <path d="M12 8v4l2 2" />
+        </svg>
+      ),
+    },
+    {
+      href: "/student/scheduler",
+      label: "Weekly Scheduler",
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
       ),
     },
@@ -710,12 +732,12 @@ export default function RoleSidebarShell({
             </button>
           </div>
 
-          <nav className="mt-5 flex-1 space-y-1 px-4">
+          <nav className="mt-5 flex-1 space-y-1 px-4 overflow-y-auto">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                className={`flex items-center justify-between rounded-2xl px-4 py-3 text-xs font-medium transition ${
                   isActive(item.href)
                     ? "bg-blue-500/16 text-white shadow-[0_12px_24px_rgba(37,99,235,0.16)]"
                     : "text-slate-200 hover:bg-white/6 hover:text-white"

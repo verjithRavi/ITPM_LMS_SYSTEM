@@ -9,16 +9,17 @@ export interface Chat {
     };
     role: string;
   }[];
-  
-  export interface Message {
+}
+
+export interface Message {
+  _id: string;
+  sender: {
     _id: string;
-    sender: {
-      _id: string;
-      fullName: string;
-      userId: string;
-      role: string;
-    };
-    content: string;
-    timestamp?: string;
-    readAt?: string;
-  }
+    fullName: string;
+    userId: string;
+    role: string;
+  };
+  content: string;
+  timestamp?: string;
+  readAt?: string;
+}
