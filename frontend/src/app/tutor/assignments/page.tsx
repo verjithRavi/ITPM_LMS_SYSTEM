@@ -36,18 +36,32 @@ type QuizReviewForm = {
   answers: Array<{ questionId: string; marksAwarded: string; reviewComment: string }>;
   overallFeedback: string;
 };
+type QuizReviewErrors = {
+  answers?: Array<{ reviewComment?: string }>;
+  overallFeedback?: string;
+};
 type AssignmentForm = { title: string; description: string; moduleName: string; totalMarks: string; deadline: string; submissionType: "" | SubmissionType; instructions: string };
 type QuizQuestionForm = { questionType: QuestionType; questionText: string; options: string[]; correctAnswer: string; marks: string; topicCategory: string };
 type QuizForm = { title: string; description: string; moduleName: string; totalMarks: string; deadline: string; instructions: string; questions: QuizQuestionForm[] };
 type AssignmentFormErrors = Partial<Record<"title" | "description" | "moduleName" | "totalMarks" | "deadline" | "submissionType", string>>;
 type QuizQuestionErrors = Partial<Record<"questionText" | "topicCategory" | "correctAnswer" | "marks" | "options", string>>;
-type QuizFormErrors = Partial<Record<"title" | "description" | "moduleName" | "totalMarks" | "deadline", string>> & { questions?: QuizQuestionErrors[] };
+type QuizFormErrors = Partial<Record<"title" | "description" | "moduleName" | "totalMarks" | "deadline" | "questionsTotal", string>> & { questions?: QuizQuestionErrors[] };
 
 const shell = "rounded-[28px] border border-blue-100 bg-white shadow-[0_20px_60px_rgba(37,99,235,0.08)]";
 const input = "w-full rounded-2xl border border-blue-100 bg-blue-50/40 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500";
 const card = "rounded-2xl border border-blue-100 bg-white p-4";
 const overlay = "fixed inset-0 z-[90] overflow-y-auto bg-slate-950/80 px-4 py-8 backdrop-blur-sm";
 const modalCard = "mx-auto w-full max-w-4xl rounded-[30px] border border-blue-100 bg-white p-6 shadow-[0_30px_90px_rgba(37,99,235,0.12)]";
+const ASSIGNMENT_TITLE_MAX_LENGTH = 50;
+const ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH = 200;
+const QUIZ_TITLE_MAX_LENGTH = 50;
+const QUIZ_INSTRUCTIONS_MAX_LENGTH = 200;
+const QUIZ_TOPIC_MAX_LENGTH = 50;
+const QUIZ_QUESTION_TEXT_MAX_LENGTH = 200;
+const QUIZ_OPTION_MAX_LENGTH = 100;
+const QUIZ_CORRECT_ANSWER_MAX_LENGTH = 100;
+const QUIZ_REVIEW_COMMENT_MAX_LENGTH = 200;
+const QUIZ_OVERALL_FEEDBACK_MAX_LENGTH = 200;
 
 const emptyAssignment: AssignmentForm = { title: "", description: "", moduleName: "", totalMarks: "", deadline: "", submissionType: "", instructions: "" };
 const createQuestion = (type: QuestionType = "MCQ"): QuizQuestionForm => ({ questionType: type, questionText: "", options: type === "MCQ" ? ["", ""] : type === "TRUE_FALSE" ? ["True", "False"] : [], correctAnswer: "", marks: "", topicCategory: "" });
@@ -58,11 +72,14 @@ const syncInstructionFields = <T extends { description: string; instructions: st
 const toAssignmentForm = (item: Assignment): AssignmentForm => ({ title: item.title, description: item.instructions || item.description, moduleName: item.moduleName, totalMarks: String(item.totalMarks), deadline: toDateTimeLocal(item.deadline), submissionType: item.submissionType, instructions: item.instructions || item.description });
 const toQuizForm = (quiz: Quiz): QuizForm => ({ title: quiz.title, description: quiz.instructions || quiz.description, moduleName: quiz.moduleName, totalMarks: String(quiz.totalMarks), deadline: toDateTimeLocal(quiz.deadline), instructions: quiz.instructions || quiz.description, questions: quiz.questions.map((q) => ({ questionType: q.questionType, questionText: q.questionText, options: q.questionType === "MCQ" ? [...q.options] : q.questionType === "TRUE_FALSE" ? ["True", "False"] : [], correctAnswer: q.correctAnswer, marks: String(q.marks), topicCategory: q.topicCategory })) });
 const buildQuizPayload = (form: QuizForm, status: Status) => ({ ...syncInstructionFields(form), totalMarks: Number(form.totalMarks), status, questions: form.questions.map((q) => ({ ...q, marks: Number(q.marks), options: q.questionType === "MCQ" ? q.options.filter((item) => item.trim()) : q.questionType === "TRUE_FALSE" ? ["True", "False"] : [] })) });
+const totalQuizQuestionMarks = (questions: QuizQuestionForm[]) => questions.reduce((sum, question) => sum + (Number(question.marks) || 0), 0);
 const fieldError = (message?: string) => message ? <p className="mt-1 text-xs font-medium text-red-500">{message}</p> : null;
 const validateAssignmentForm = (form: AssignmentForm): AssignmentFormErrors => {
   const errors: AssignmentFormErrors = {};
   if (!form.title.trim()) errors.title = "This field is required.";
+  else if (form.title.trim().length > ASSIGNMENT_TITLE_MAX_LENGTH) errors.title = `Title must be ${ASSIGNMENT_TITLE_MAX_LENGTH} characters or fewer.`;
   if (!form.description.trim()) errors.description = "This field is required.";
+  else if (form.description.trim().length > ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH) errors.description = `Instructions must be ${ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH} characters or fewer.`;
   if (!form.moduleName) errors.moduleName = "This field is required.";
   if (!form.totalMarks || Number(form.totalMarks) <= 0) errors.totalMarks = "Enter a valid mark.";
   if (!form.deadline) errors.deadline = "This field is required.";
@@ -72,20 +89,32 @@ const validateAssignmentForm = (form: AssignmentForm): AssignmentFormErrors => {
 const validateQuizForm = (form: QuizForm): QuizFormErrors => {
   const errors: QuizFormErrors = {};
   if (!form.title.trim()) errors.title = "This field is required.";
+  else if (form.title.trim().length > QUIZ_TITLE_MAX_LENGTH) errors.title = `Title must be ${QUIZ_TITLE_MAX_LENGTH} characters or fewer.`;
   if (!form.description.trim()) errors.description = "This field is required.";
+  else if (form.description.trim().length > QUIZ_INSTRUCTIONS_MAX_LENGTH) errors.description = `Instructions must be ${QUIZ_INSTRUCTIONS_MAX_LENGTH} characters or fewer.`;
   if (!form.moduleName) errors.moduleName = "This field is required.";
   if (!form.totalMarks || Number(form.totalMarks) <= 0) errors.totalMarks = "Enter a valid mark.";
   if (!form.deadline) errors.deadline = "This field is required.";
   const questionErrors = form.questions.map((question) => {
     const entry: QuizQuestionErrors = {};
     if (!question.topicCategory.trim()) entry.topicCategory = "This field is required.";
+    else if (question.topicCategory.trim().length > QUIZ_TOPIC_MAX_LENGTH) entry.topicCategory = `Topic / Category must be ${QUIZ_TOPIC_MAX_LENGTH} characters or fewer.`;
     if (!question.questionText.trim()) entry.questionText = "This field is required.";
+    else if (question.questionText.trim().length > QUIZ_QUESTION_TEXT_MAX_LENGTH) entry.questionText = `Question text must be ${QUIZ_QUESTION_TEXT_MAX_LENGTH} characters or fewer.`;
     if (!question.correctAnswer.trim()) entry.correctAnswer = "This field is required.";
+    else if (question.correctAnswer.trim().length > QUIZ_CORRECT_ANSWER_MAX_LENGTH) entry.correctAnswer = `Correct answer must be ${QUIZ_CORRECT_ANSWER_MAX_LENGTH} characters or fewer.`;
     if (!question.marks || Number(question.marks) <= 0) entry.marks = "Enter a valid mark.";
-    if (question.questionType === "MCQ" && question.options.some((option) => !option.trim())) entry.options = "Each option is required.";
+    if (question.questionType === "MCQ") {
+      if (question.options.length < 2) entry.options = "Add at least two options.";
+      else if (question.options.some((option) => !option.trim())) entry.options = "Each option is required.";
+      else if (question.options.some((option) => option.trim().length > QUIZ_OPTION_MAX_LENGTH)) entry.options = `Each option must be ${QUIZ_OPTION_MAX_LENGTH} characters or fewer.`;
+    }
     return entry;
   });
   if (questionErrors.some((entry) => Object.keys(entry).length > 0)) errors.questions = questionErrors;
+  if (form.totalMarks && Number(form.totalMarks) > 0 && totalQuizQuestionMarks(form.questions) !== Number(form.totalMarks)) {
+    errors.questionsTotal = `Total question marks must be exactly ${Number(form.totalMarks)}.`;
+  }
   return errors;
 };
 
@@ -142,6 +171,7 @@ function TutorAssignmentsContent() {
   const [attemptOverview, setAttemptOverview] = useState<QuizAttemptOverview | null>(null);
   const [selectedAttempt, setSelectedAttempt] = useState<QuizAttemptRow | null>(null);
   const [quizReviewForm, setQuizReviewForm] = useState<QuizReviewForm>({ answers: [], overallFeedback: "" });
+  const [quizReviewErrors, setQuizReviewErrors] = useState<QuizReviewErrors>({});
   const [savingQuizReview, setSavingQuizReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -323,6 +353,7 @@ function TutorAssignmentsContent() {
   function startQuizReview(row: QuizAttemptRow) {
     if (!attemptOverview) return;
     setSelectedAttempt(row);
+    setQuizReviewErrors({});
     setQuizReviewForm({
       answers: attemptOverview.quiz.questions.map((question) => {
         const answer = row.answers.find((item) => item.questionId === question._id);
@@ -338,6 +369,20 @@ function TutorAssignmentsContent() {
 
   async function saveQuizReview() {
     if (!token || !attemptOverview || !selectedAttempt?.attemptId) return;
+    const reviewErrors: QuizReviewErrors = {};
+    const answerErrors = quizReviewForm.answers.map((item) => {
+      const entry: { reviewComment?: string } = {};
+      if (item.reviewComment.trim().length > QUIZ_REVIEW_COMMENT_MAX_LENGTH) {
+        entry.reviewComment = `Review comment must be ${QUIZ_REVIEW_COMMENT_MAX_LENGTH} characters or fewer.`;
+      }
+      return entry;
+    });
+    if (answerErrors.some((entry) => Object.keys(entry).length > 0)) reviewErrors.answers = answerErrors;
+    if (quizReviewForm.overallFeedback.trim().length > QUIZ_OVERALL_FEEDBACK_MAX_LENGTH) {
+      reviewErrors.overallFeedback = `Overall feedback must be ${QUIZ_OVERALL_FEEDBACK_MAX_LENGTH} characters or fewer.`;
+    }
+    setQuizReviewErrors(reviewErrors);
+    if (Object.keys(reviewErrors).length > 0) return;
     setSavingQuizReview(true); setError(null); setSuccess(null);
     try {
       const data = await apiFetch<{ attempt: Pick<QuizAttemptRow, "score" | "answers" | "reviewStatus" | "overallFeedback" | "reviewedAt">; message: string }>(
@@ -354,6 +399,7 @@ function TutorAssignmentsContent() {
         } : row),
       }) : current);
       setSelectedAttempt((current) => current ? { ...current, ...data.attempt, status: current.isLate ? "LATE" : "REVIEWED" } : current);
+      setQuizReviewErrors({});
       setSuccess(data.message || "Quiz attempt reviewed successfully.");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save quiz review.");
@@ -384,8 +430,8 @@ function TutorAssignmentsContent() {
               <select className={input} value={question.questionType} onChange={(e) => changeQuestionType(mode, index, e.target.value as QuestionType)} disabled={disabled}>
                 <option value="MCQ">MCQ</option><option value="SHORT_ANSWER">Short Answer</option>
               </select>
-              <div>{fieldError(errors?.[index]?.topicCategory)}<input className={input} placeholder="Topic / Category" value={question.topicCategory} onChange={(e) => updateQuestion(mode, index, { topicCategory: e.target.value })} disabled={disabled} required /></div>
-              <div className="md:col-span-2">{fieldError(errors?.[index]?.questionText)}<textarea className={`${input}`} rows={3} placeholder="Question Text" value={question.questionText} onChange={(e) => updateQuestion(mode, index, { questionText: e.target.value })} disabled={disabled} required /></div>
+              <div><input className={input} placeholder="Topic / Category" value={question.topicCategory} onChange={(e) => updateQuestion(mode, index, { topicCategory: e.target.value })} disabled={disabled} maxLength={QUIZ_TOPIC_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{question.topicCategory.length}/{QUIZ_TOPIC_MAX_LENGTH}</p>{fieldError(errors?.[index]?.topicCategory)}</div>
+              <div className="md:col-span-2"><textarea className={`${input}`} rows={3} placeholder="Question Text" value={question.questionText} onChange={(e) => updateQuestion(mode, index, { questionText: e.target.value })} disabled={disabled} maxLength={QUIZ_QUESTION_TEXT_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{question.questionText.length}/{QUIZ_QUESTION_TEXT_MAX_LENGTH}</p>{fieldError(errors?.[index]?.questionText)}</div>
               {question.questionType === "MCQ" ? (
                 <div className="space-y-3 md:col-span-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -395,13 +441,13 @@ function TutorAssignmentsContent() {
                   {fieldError(errors?.[index]?.options)}
                   {question.options.map((option, optionIndex) => (
                     <div key={`${mode}-q${index}-o${optionIndex}`} className="flex gap-3">
-                      <input className={input} placeholder={`Option ${optionIndex + 1}`} value={option} onChange={(e) => updateQuestion(mode, index, { options: question.options.map((item, i) => i === optionIndex ? e.target.value : item) })} disabled={disabled} required />
+                      <div className="flex-1"><input className={input} placeholder={`Option ${optionIndex + 1}`} value={option} onChange={(e) => updateQuestion(mode, index, { options: question.options.map((item, i) => i === optionIndex ? e.target.value : item) })} disabled={disabled} maxLength={QUIZ_OPTION_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{option.length}/{QUIZ_OPTION_MAX_LENGTH}</p></div>
                       {question.options.length > 2 ? <button type="button" onClick={() => updateQuestion(mode, index, { options: question.options.filter((_, i) => i !== optionIndex) })} disabled={disabled} className="rounded-2xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-200 disabled:opacity-60">Remove</button> : null}
                     </div>
                   ))}
                 </div>
               ) : question.questionType === "TRUE_FALSE" ? <div className="md:col-span-2 text-sm text-slate-300">Options: True and False</div> : null}
-              <div>{fieldError(errors?.[index]?.correctAnswer)}<input className={input} placeholder={question.questionType === "TRUE_FALSE" ? "Correct Answer: True or False" : "Correct Answer"} value={question.correctAnswer} onChange={(e) => updateQuestion(mode, index, { correctAnswer: e.target.value })} disabled={disabled} required /></div>
+              <div><input className={input} placeholder={question.questionType === "TRUE_FALSE" ? "Correct Answer: True or False" : "Correct Answer"} value={question.correctAnswer} onChange={(e) => updateQuestion(mode, index, { correctAnswer: e.target.value })} disabled={disabled} maxLength={QUIZ_CORRECT_ANSWER_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{question.correctAnswer.length}/{QUIZ_CORRECT_ANSWER_MAX_LENGTH}</p>{fieldError(errors?.[index]?.correctAnswer)}</div>
               <div>{fieldError(errors?.[index]?.marks)}<input className={input} type="number" min="0" placeholder="Marks" value={question.marks} onChange={(e) => updateQuestion(mode, index, { marks: e.target.value })} disabled={disabled} required /></div>
             </div>
           </div>
@@ -445,8 +491,31 @@ function TutorAssignmentsContent() {
               <div className={`${shell} p-6`}>
                 <h2 className="text-2xl font-semibold text-white">Create a New Assignment</h2><p className="mt-2 text-sm text-slate-300">Select one of the admin-created modules to attach this assignment to.</p>
                 <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={(event: FormEvent) => { event.preventDefault(); void saveAssignment("PUBLISHED"); }}>
-                  <div className="md:col-span-2"><input className={`${input}`} placeholder="Assignment Title" value={assignmentForm.title} onChange={(e) => setAssignmentForm({ ...assignmentForm, title: e.target.value })} required />{fieldError(assignmentFormErrors.title)}</div>
-                  <div className="md:col-span-2"><textarea className={`${input}`} rows={5} placeholder="Instructions" value={assignmentForm.description} onChange={(e) => setAssignmentForm({ ...assignmentForm, description: e.target.value, instructions: e.target.value })} required />{fieldError(assignmentFormErrors.description)}</div>
+                  <div className="md:col-span-2">
+                    <input
+                      className={`${input}`}
+                      placeholder="Assignment Title"
+                      value={assignmentForm.title}
+                      onChange={(e) => setAssignmentForm({ ...assignmentForm, title: e.target.value })}
+                      maxLength={ASSIGNMENT_TITLE_MAX_LENGTH}
+                      required
+                    />
+                    <p className="mt-1 text-right text-xs text-slate-500">{assignmentForm.title.length}/{ASSIGNMENT_TITLE_MAX_LENGTH}</p>
+                    {fieldError(assignmentFormErrors.title)}
+                  </div>
+                  <div className="md:col-span-2">
+                    <textarea
+                      className={`${input}`}
+                      rows={5}
+                      placeholder="Instructions"
+                      value={assignmentForm.description}
+                      onChange={(e) => setAssignmentForm({ ...assignmentForm, description: e.target.value, instructions: e.target.value })}
+                      maxLength={ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH}
+                      required
+                    />
+                    <p className="mt-1 text-right text-xs text-slate-500">{assignmentForm.description.length}/{ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH}</p>
+                    {fieldError(assignmentFormErrors.description)}
+                  </div>
                   <div><select className={input} value={assignmentForm.moduleName} onChange={(e) => setAssignmentForm({ ...assignmentForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}><option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>{visibleModules.map((moduleItem) => <option key={moduleItem._id} value={moduleItem.name}>{moduleItem.moduleCode} - {moduleItem.name} - Year {moduleItem.year} Semester {moduleItem.semester}</option>)}</select>{fieldError(assignmentFormErrors.moduleName)}</div>
                   <div><input className={input} type="number" min="0" placeholder="Total Marks" value={assignmentForm.totalMarks} onChange={(e) => setAssignmentForm({ ...assignmentForm, totalMarks: e.target.value })} required />{fieldError(assignmentFormErrors.totalMarks)}</div>
                   <div><input className={input} type="datetime-local" value={assignmentForm.deadline} onChange={(e) => setAssignmentForm({ ...assignmentForm, deadline: e.target.value })} required />{fieldError(assignmentFormErrors.deadline)}</div>
@@ -526,7 +595,7 @@ function TutorAssignmentsContent() {
         ) : (
           <div className="space-y-4">
             <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,rgba(168,85,247,0.14),rgba(17,24,39,0.78))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl"><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><div className="text-sm font-semibold uppercase tracking-wide text-orange-100">Quiz Management</div><p className="mt-3 max-w-2xl text-sm text-slate-300">Create quizzes, add questions, and manage saved quiz sets here.</p></div><button type="button" onClick={() => { setShowQuizForm((current) => !current); setQuizFormErrors({}); setError(null); setSuccess(null); }} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_14px_32px_rgba(251,146,60,0.35)]">{showQuizForm ? "Close Form" : "Create Quiz"}</button></div></div>
-            {showQuizForm ? <div className={`${shell} p-6`}><h2 className="text-2xl font-semibold text-white">Create a New Quiz</h2><p className="mt-2 text-sm text-slate-300">Select one of the admin-created modules before building the quiz.</p><form className="mt-6 space-y-6" onSubmit={(event: FormEvent) => { event.preventDefault(); void saveQuiz("PUBLISHED"); }}><div className="grid gap-4 md:grid-cols-2"><div className="md:col-span-2"><input className={`${input}`} placeholder="Quiz Title" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} required />{fieldError(quizFormErrors.title)}</div><div className="md:col-span-2"><textarea className={`${input}`} rows={5} placeholder="Instructions" value={quizForm.description} onChange={(e) => setQuizForm({ ...quizForm, description: e.target.value, instructions: e.target.value })} required />{fieldError(quizFormErrors.description)}</div><div><select className={input} value={quizForm.moduleName} onChange={(e) => setQuizForm({ ...quizForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}><option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>{visibleModules.map((moduleItem) => <option key={moduleItem._id} value={moduleItem.name}>{moduleItem.moduleCode} - {moduleItem.name} - Year {moduleItem.year} Semester {moduleItem.semester}</option>)}</select>{fieldError(quizFormErrors.moduleName)}</div><div><input className={input} type="number" min="0" placeholder="Total Marks" value={quizForm.totalMarks} onChange={(e) => setQuizForm({ ...quizForm, totalMarks: e.target.value })} required />{fieldError(quizFormErrors.totalMarks)}</div><div><input className={input} type="datetime-local" value={quizForm.deadline} onChange={(e) => setQuizForm({ ...quizForm, deadline: e.target.value })} required />{fieldError(quizFormErrors.deadline)}</div></div>{renderQuestions(quizForm, "create", savingQuiz, quizFormErrors.questions)}<div className="flex flex-wrap gap-3"><button type="submit" disabled={savingQuiz} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-70">{savingQuiz ? "Saving..." : "Publish Quiz"}</button><button type="button" disabled={savingQuiz} onClick={() => void saveQuiz("DRAFT")} className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200 disabled:opacity-70">Save as Draft</button></div></form></div> : null}
+            {showQuizForm ? <div className={`${shell} p-6`}><h2 className="text-2xl font-semibold text-white">Create a New Quiz</h2><p className="mt-2 text-sm text-slate-300">Select one of the admin-created modules before building the quiz.</p><form className="mt-6 space-y-6" onSubmit={(event: FormEvent) => { event.preventDefault(); void saveQuiz("PUBLISHED"); }}><div className="grid gap-4 md:grid-cols-2"><div className="md:col-span-2"><input className={`${input}`} placeholder="Quiz Title" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} maxLength={QUIZ_TITLE_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{quizForm.title.length}/{QUIZ_TITLE_MAX_LENGTH}</p>{fieldError(quizFormErrors.title)}</div><div className="md:col-span-2"><textarea className={`${input}`} rows={5} placeholder="Instructions" value={quizForm.description} onChange={(e) => setQuizForm({ ...quizForm, description: e.target.value, instructions: e.target.value })} maxLength={QUIZ_INSTRUCTIONS_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{quizForm.description.length}/{QUIZ_INSTRUCTIONS_MAX_LENGTH}</p>{fieldError(quizFormErrors.description)}</div><div><select className={input} value={quizForm.moduleName} onChange={(e) => setQuizForm({ ...quizForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}><option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>{visibleModules.map((moduleItem) => <option key={moduleItem._id} value={moduleItem.name}>{moduleItem.moduleCode} - {moduleItem.name} - Year {moduleItem.year} Semester {moduleItem.semester}</option>)}</select>{fieldError(quizFormErrors.moduleName)}</div><div><input className={input} type="number" min="0" placeholder="Total Marks" value={quizForm.totalMarks} onChange={(e) => setQuizForm({ ...quizForm, totalMarks: e.target.value })} required />{fieldError(quizFormErrors.totalMarks)}{fieldError(quizFormErrors.questionsTotal)}</div><div><input className={input} type="datetime-local" value={quizForm.deadline} onChange={(e) => setQuizForm({ ...quizForm, deadline: e.target.value })} required />{fieldError(quizFormErrors.deadline)}</div></div><div className="rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 text-sm text-slate-300">Question Marks Total: {totalQuizQuestionMarks(quizForm.questions)} / {quizForm.totalMarks || 0}</div>{renderQuestions(quizForm, "create", savingQuiz, quizFormErrors.questions)}<div className="flex flex-wrap gap-3"><button type="submit" disabled={savingQuiz} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-70">{savingQuiz ? "Saving..." : "Publish Quiz"}</button><button type="button" disabled={savingQuiz} onClick={() => void saveQuiz("DRAFT")} className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200 disabled:opacity-70">Save as Draft</button></div></form></div> : null}
             <div className="grid gap-4 md:grid-cols-3"><StatCard label="Draft Quizzes" value={loadingQuizzes ? "--" : String(quizStats.drafts).padStart(2, "0")} note="Quizzes saved privately before release." /><StatCard label="Live" value={loadingQuizzes ? "--" : String(quizStats.live).padStart(2, "0")} note="Published quizzes students can still attempt." /><StatCard label="Closed" value={loadingQuizzes ? "--" : String(quizStats.closed).padStart(2, "0")} note="Quizzes whose deadlines have passed." /></div>
             <div className={`${shell} p-5`}>
               <div className="flex items-center justify-between gap-3"><div><div className="text-sm font-semibold uppercase tracking-wide text-orange-100">Saved Quizzes</div><p className="mt-2 text-sm text-slate-300">{activeModule ? `${activeModule.moduleCode} - ${activeModule.name}` : "Quizzes already stored in the database."}</p></div><button type="button" onClick={() => void loadQuizzes()} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100">Refresh</button></div>
@@ -548,8 +617,31 @@ function TutorAssignmentsContent() {
               </div>
             ) : (
               <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); void saveAssignmentEdit(); }}>
-                <div className="md:col-span-2"><input className={`${input}`} placeholder="Assignment Title" value={assignmentEditForm.title} onChange={(e) => setAssignmentEditForm({ ...assignmentEditForm, title: e.target.value })} required />{fieldError(assignmentEditErrors.title)}</div>
-                <div className="md:col-span-2"><textarea className={`${input}`} rows={5} placeholder="Instructions" value={assignmentEditForm.description} onChange={(e) => setAssignmentEditForm({ ...assignmentEditForm, description: e.target.value, instructions: e.target.value })} required />{fieldError(assignmentEditErrors.description)}</div>
+                <div className="md:col-span-2">
+                  <input
+                    className={`${input}`}
+                    placeholder="Assignment Title"
+                    value={assignmentEditForm.title}
+                    onChange={(e) => setAssignmentEditForm({ ...assignmentEditForm, title: e.target.value })}
+                    maxLength={ASSIGNMENT_TITLE_MAX_LENGTH}
+                    required
+                  />
+                  <p className="mt-1 text-right text-xs text-slate-500">{assignmentEditForm.title.length}/{ASSIGNMENT_TITLE_MAX_LENGTH}</p>
+                  {fieldError(assignmentEditErrors.title)}
+                </div>
+                <div className="md:col-span-2">
+                  <textarea
+                    className={`${input}`}
+                    rows={5}
+                    placeholder="Instructions"
+                    value={assignmentEditForm.description}
+                    onChange={(e) => setAssignmentEditForm({ ...assignmentEditForm, description: e.target.value, instructions: e.target.value })}
+                    maxLength={ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH}
+                    required
+                  />
+                  <p className="mt-1 text-right text-xs text-slate-500">{assignmentEditForm.description.length}/{ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH}</p>
+                  {fieldError(assignmentEditErrors.description)}
+                </div>
                 <div><select className={input} value={assignmentEditForm.moduleName} onChange={(e) => setAssignmentEditForm({ ...assignmentEditForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}><option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>{visibleModules.map((moduleItem) => <option key={moduleItem._id} value={moduleItem.name}>{moduleItem.moduleCode} - {moduleItem.name} - Year {moduleItem.year} Semester {moduleItem.semester}</option>)}</select>{fieldError(assignmentEditErrors.moduleName)}</div>
                 <div><input className={input} type="number" min="0" placeholder="Total Marks" value={assignmentEditForm.totalMarks} onChange={(e) => setAssignmentEditForm({ ...assignmentEditForm, totalMarks: e.target.value })} required />{fieldError(assignmentEditErrors.totalMarks)}</div>
                 <div><input className={input} type="datetime-local" value={assignmentEditForm.deadline} onChange={(e) => setAssignmentEditForm({ ...assignmentEditForm, deadline: e.target.value })} required />{fieldError(assignmentEditErrors.deadline)}</div>
@@ -574,7 +666,8 @@ function TutorAssignmentsContent() {
               </div>
             ) : (
               <form className="mt-6 space-y-6" onSubmit={(event) => { event.preventDefault(); void saveQuizEdit(); }}>
-                <div className="grid gap-4 md:grid-cols-2"><div className="md:col-span-2"><input className={`${input}`} placeholder="Quiz Title" value={quizEditForm.title} onChange={(e) => setQuizEditForm({ ...quizEditForm, title: e.target.value })} required />{fieldError(quizEditErrors.title)}</div><div className="md:col-span-2"><textarea className={`${input}`} rows={5} placeholder="Instructions" value={quizEditForm.description} onChange={(e) => setQuizEditForm({ ...quizEditForm, description: e.target.value, instructions: e.target.value })} required />{fieldError(quizEditErrors.description)}</div><div><select className={input} value={quizEditForm.moduleName} onChange={(e) => setQuizEditForm({ ...quizEditForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}><option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>{visibleModules.map((moduleItem) => <option key={moduleItem._id} value={moduleItem.name}>{moduleItem.moduleCode} - {moduleItem.name} - Year {moduleItem.year} Semester {moduleItem.semester}</option>)}</select>{fieldError(quizEditErrors.moduleName)}</div><div><input className={input} type="number" min="0" placeholder="Total Marks" value={quizEditForm.totalMarks} onChange={(e) => setQuizEditForm({ ...quizEditForm, totalMarks: e.target.value })} required />{fieldError(quizEditErrors.totalMarks)}</div><div><input className={input} type="datetime-local" value={quizEditForm.deadline} onChange={(e) => setQuizEditForm({ ...quizEditForm, deadline: e.target.value })} required />{fieldError(quizEditErrors.deadline)}</div></div>
+                <div className="grid gap-4 md:grid-cols-2"><div className="md:col-span-2"><input className={`${input}`} placeholder="Quiz Title" value={quizEditForm.title} onChange={(e) => setQuizEditForm({ ...quizEditForm, title: e.target.value })} maxLength={QUIZ_TITLE_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-500">{quizEditForm.title.length}/{QUIZ_TITLE_MAX_LENGTH}</p>{fieldError(quizEditErrors.title)}</div><div className="md:col-span-2"><textarea className={`${input}`} rows={5} placeholder="Instructions" value={quizEditForm.description} onChange={(e) => setQuizEditForm({ ...quizEditForm, description: e.target.value, instructions: e.target.value })} maxLength={QUIZ_INSTRUCTIONS_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-500">{quizEditForm.description.length}/{QUIZ_INSTRUCTIONS_MAX_LENGTH}</p>{fieldError(quizEditErrors.description)}</div><div><select className={input} value={quizEditForm.moduleName} onChange={(e) => setQuizEditForm({ ...quizEditForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}><option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>{visibleModules.map((moduleItem) => <option key={moduleItem._id} value={moduleItem.name}>{moduleItem.moduleCode} - {moduleItem.name} - Year {moduleItem.year} Semester {moduleItem.semester}</option>)}</select>{fieldError(quizEditErrors.moduleName)}</div><div><input className={input} type="number" min="0" placeholder="Total Marks" value={quizEditForm.totalMarks} onChange={(e) => setQuizEditForm({ ...quizEditForm, totalMarks: e.target.value })} required />{fieldError(quizEditErrors.totalMarks)}{fieldError(quizEditErrors.questionsTotal)}</div><div><input className={input} type="datetime-local" value={quizEditForm.deadline} onChange={(e) => setQuizEditForm({ ...quizEditForm, deadline: e.target.value })} required />{fieldError(quizEditErrors.deadline)}</div></div>
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-slate-700">Question Marks Total: {totalQuizQuestionMarks(quizEditForm.questions)} / {quizEditForm.totalMarks || 0}</div>
                 {renderQuestions(quizEditForm, "edit", savingQuizEdit, quizEditErrors.questions)}
                 <div className="flex flex-wrap gap-3"><button type="submit" disabled={savingQuizEdit} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-70">{savingQuizEdit ? "Saving..." : "Save Changes"}</button><button type="button" onClick={() => { setEditingQuiz(false); setQuizEditErrors({}); setQuizEditForm(toQuizForm(selectedQuiz)); }} className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200">Cancel</button></div>
               </form>
@@ -655,7 +748,7 @@ function TutorAssignmentsContent() {
                     {isManual ? (
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <input className={input} type="number" min="0" max={question.marks} placeholder="Marks Awarded" value={reviewAnswer?.marksAwarded || "0"} onChange={(e) => setQuizReviewForm((current) => ({ ...current, answers: current.answers.map((item) => item.questionId === question._id ? { ...item, marksAwarded: e.target.value } : item) }))} />
-                        <input className={input} placeholder="Review Comment" value={reviewAnswer?.reviewComment || ""} onChange={(e) => setQuizReviewForm((current) => ({ ...current, answers: current.answers.map((item) => item.questionId === question._id ? { ...item, reviewComment: e.target.value } : item) }))} />
+                        <div><input className={input} placeholder="Review Comment" value={reviewAnswer?.reviewComment || ""} onChange={(e) => setQuizReviewForm((current) => ({ ...current, answers: current.answers.map((item) => item.questionId === question._id ? { ...item, reviewComment: e.target.value } : item) }))} maxLength={QUIZ_REVIEW_COMMENT_MAX_LENGTH} /><p className="mt-1 text-right text-xs text-slate-400">{(reviewAnswer?.reviewComment || "").length}/{QUIZ_REVIEW_COMMENT_MAX_LENGTH}</p>{fieldError(quizReviewErrors.answers?.[quizReviewForm.answers.findIndex((item) => item.questionId === question._id)]?.reviewComment)}</div>
                       </div>
                     ) : (
                       <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">Automatically marked: {answer?.marksAwarded ?? 0} / {question.marks}</div>
@@ -663,7 +756,7 @@ function TutorAssignmentsContent() {
                   </div>
                 );
               })}
-              <textarea className={input} rows={4} placeholder="Overall feedback" value={quizReviewForm.overallFeedback} onChange={(e) => setQuizReviewForm((current) => ({ ...current, overallFeedback: e.target.value }))} />
+              <div><textarea className={input} rows={4} placeholder="Overall feedback" value={quizReviewForm.overallFeedback} onChange={(e) => setQuizReviewForm((current) => ({ ...current, overallFeedback: e.target.value }))} maxLength={QUIZ_OVERALL_FEEDBACK_MAX_LENGTH} /><p className="mt-1 text-right text-xs text-slate-400">{quizReviewForm.overallFeedback.length}/{QUIZ_OVERALL_FEEDBACK_MAX_LENGTH}</p>{fieldError(quizReviewErrors.overallFeedback)}</div>
               <div className="flex flex-wrap gap-3">
                 <button type="button" onClick={() => void saveQuizReview()} disabled={savingQuizReview} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-70">{savingQuizReview ? "Saving..." : "Save Review"}</button>
                 <div className="rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">Total Reviewed Marks: {quizReviewForm.answers.reduce((sum, item) => sum + (Number(item.marksAwarded) || 0), 0)} / {attemptOverview.quiz.totalMarks}</div>
