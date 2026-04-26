@@ -13,6 +13,7 @@ const modulesRoutes = require("./routes/modules.routes");
 const feedbacksRoutes = require("./routes/feedbacks.routes");
 const chatRoutes = require("./routes/chat.routes");
 const testRoutes = require("./routes/test.routes");
+const booksRoutes = require("./routes/books");
 
 // Career module routes
 const careerCvRoutes = require("./career/routes/cvRoutes");
@@ -39,6 +40,7 @@ app.use("/api/modules", modulesRoutes);
 app.use("/api/feedbacks", feedbacksRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/test", testRoutes);
+app.use("/api/books", booksRoutes);
 
 // Career module endpoints (all under /api/career/)
 app.use("/api/career/cv", careerCvRoutes);
