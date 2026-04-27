@@ -45,6 +45,13 @@ const ASSIGNMENT_REVIEW_COMMENT_MAX_LENGTH = 200;
 const dt = (value: string) => new Date(value).toLocaleString();
 const emptyAssignmentReview = (): AssignmentReviewForm => ({ criteriaScores: [{ criterion: "", marksAwarded: "", comment: "" }] });
 const totalCriteriaMarks = (criteriaScores: AssignmentReviewForm["criteriaScores"]) => criteriaScores.reduce((sum, item) => sum + (Number(item.marksAwarded) || 0), 0);
+const getAttachmentExtension = (mimeType: string) => {
+  if (mimeType.includes("pdf")) return ".pdf";
+  if (mimeType.includes("wordprocessingml")) return ".docx";
+  if (mimeType.includes("zip")) return ".zip";
+  if (mimeType.includes("plain")) return ".txt";
+  return "";
+};
 
 function StatCard({ label, value, note }: { label: string; value: string; note: string }) {
   return <div className="rounded-[24px] border border-blue-100 bg-white p-5 shadow-[0_16px_40px_rgba(37,99,235,0.08)]"><div className="text-xs uppercase tracking-[0.22em] text-blue-700">{label}</div><div className="mt-3 text-3xl font-semibold text-slate-900">{value}</div><p className="mt-2 text-sm text-slate-500">{note}</p></div>;
@@ -129,11 +136,42 @@ function TutorAssignmentSubmissionsContent() {
     });
   }
 
+  async function openAttachment(dataUrl: string) {
+    try {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const extension = getAttachmentExtension(blob.type);
+      const fileName = `assignment-submission${extension}`;
+      const canPreview = blob.type.includes("pdf") || blob.type.startsWith("image/") || blob.type.startsWith("text/");
+
+      if (canPreview) {
+        const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
+        if (!opened) {
+          const link = document.createElement("a");
+          link.href = objectUrl;
+          link.download = fileName;
+          link.click();
+        }
+      } else {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = fileName;
+        link.click();
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch {
+      setError("Failed to open the uploaded file.");
+      setSuccess(null);
+    }
+  }
+
   async function saveAssignmentReview() {
     if (!token || !overview || !selectedSubmission?.submissionId) return;
     const currentTotal = totalCriteriaMarks(assignmentReviewForm.criteriaScores);
-    if (currentTotal !== overview.assignment.totalMarks) {
-      setError(`Total criteria marks must be exactly ${overview.assignment.totalMarks}.`);
+    if (currentTotal > overview.assignment.totalMarks) {
+      setError(`Total criteria marks must not be more than ${overview.assignment.totalMarks}.`);
       setSuccess(null);
       return;
     }
@@ -291,7 +329,7 @@ function TutorAssignmentSubmissionsContent() {
                       <div className={card}>
                         <div className="text-xs uppercase tracking-[0.2em] text-blue-700">Uploaded File</div>
                         <div className="mt-2 break-all text-sm text-slate-700">
-                          {row.attachmentUrl ? <a href={row.attachmentUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">Open uploaded file</a> : "No file uploaded"}
+                          {row.attachmentUrl ? <button type="button" onClick={() => void openAttachment(row.attachmentUrl)} className="text-blue-600 underline">Open uploaded file</button> : "No file uploaded"}
                         </div>
                       </div>
                       <div className={card}>
@@ -323,7 +361,7 @@ function TutorAssignmentSubmissionsContent() {
           <div className={modalCard}>
             {(() => {
               const currentTotal = totalCriteriaMarks(assignmentReviewForm.criteriaScores);
-              const hasExactTotal = currentTotal === overview.assignment.totalMarks;
+              const isWithinTotal = currentTotal <= overview.assignment.totalMarks;
               return (
                 <>
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -357,16 +395,16 @@ function TutorAssignmentSubmissionsContent() {
                   {assignmentReviewForm.criteriaScores.length > 1 ? <button type="button" onClick={() => setAssignmentReviewForm((current) => ({ ...current, criteriaScores: current.criteriaScores.filter((_, itemIndex) => itemIndex !== index) }))} className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">Remove</button> : null}
                 </div>
               ))}
-              {!hasExactTotal ? (
+              {!isWithinTotal ? (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                  Total criteria marks must be exactly {overview.assignment.totalMarks}. Current total is {currentTotal}.
+                  Total criteria marks must not be more than {overview.assignment.totalMarks}. Current total is {currentTotal}.
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => void saveAssignmentReview()} disabled={savingAssignmentReview || !hasExactTotal} className="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-70">
+                <button type="button" onClick={() => void saveAssignmentReview()} disabled={savingAssignmentReview || !isWithinTotal} className="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-70">
                   {savingAssignmentReview ? "Saving..." : "Save Evaluation"}
                 </button>
-                <div className={`rounded-full border px-4 py-3 text-sm ${hasExactTotal ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-600"}`}>Total: {currentTotal} / {overview.assignment.totalMarks}</div>
+                <div className={`rounded-full border px-4 py-3 text-sm ${isWithinTotal ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-600"}`}>Total: {currentTotal} / {overview.assignment.totalMarks}</div>
               </div>
             </div>
                 </>
