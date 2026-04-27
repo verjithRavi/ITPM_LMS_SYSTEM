@@ -86,7 +86,8 @@ type AssignmentFormState = {
   fileError?: string;
 };
 
-type AssessmentMode = "assignments" | "quizzes";
+type AssessmentMode = "assignments" | "quizzes" | "slides";
+type LectureSlide = { _id: string; topic: string; moduleName: string; fileData: string; fileName: string; fileType: "PDF" | "PPTX"; createdAt: string };
 
 const inputClass =
   "w-full rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500";
@@ -118,6 +119,14 @@ function getExpectedFileLabel(type: AssignmentItem["submissionType"]) {
   if (type === "DOCX") return "DOCX";
   if (type === "ZIP") return "ZIP";
   return "file";
+}
+
+function getAttachmentExtension(mimeType: string) {
+  if (mimeType.includes("pdf")) return ".pdf";
+  if (mimeType.includes("wordprocessingml")) return ".docx";
+  if (mimeType.includes("zip")) return ".zip";
+  if (mimeType.includes("plain")) return ".txt";
+  return "";
 }
 
 function matchesSubmissionType(file: File, type: AssignmentItem["submissionType"]) {
@@ -170,6 +179,7 @@ export default function StudentModuleAssessmentPage({
   const [moduleItem, setModuleItem] = useState<ModuleItem | null>(null);
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
+  const [slides, setSlides] = useState<LectureSlide[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -180,6 +190,37 @@ export default function StudentModuleAssessmentPage({
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [startingQuizId, setStartingQuizId] = useState<string | null>(null);
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
+
+  async function openAttachment(dataUrl: string) {
+    try {
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const extension = getAttachmentExtension(blob.type);
+      const fileName = `assignment-submission${extension}`;
+      const canPreview = blob.type.includes("pdf") || blob.type.startsWith("image/") || blob.type.startsWith("text/");
+
+      if (canPreview) {
+        const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
+        if (!opened) {
+          const link = document.createElement("a");
+          link.href = objectUrl;
+          link.download = fileName;
+          link.click();
+        }
+      } else {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = fileName;
+        link.click();
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch {
+      setError("Failed to open the uploaded file.");
+      setSuccess(null);
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -202,13 +243,15 @@ export default function StudentModuleAssessmentPage({
         setModuleItem(moduleRes.module);
 
         const encodedModuleName = encodeURIComponent(moduleRes.module.name);
-        const [assignmentsRes, quizzesRes] = await Promise.all([
+        const [assignmentsRes, quizzesRes, slidesRes] = await Promise.all([
           apiFetch<{ assignments: AssignmentItem[] }>(`/api/assignments?moduleName=${encodedModuleName}`, {}, token),
           apiFetch<{ quizzes: QuizItem[] }>(`/api/quizzes?moduleName=${encodedModuleName}`, {}, token),
+          apiFetch<{ slides: LectureSlide[] }>(`/api/lecture-slides?moduleName=${encodedModuleName}`, {}, token),
         ]);
 
         setAssignments(assignmentsRes.assignments);
         setQuizzes(quizzesRes.quizzes);
+        setSlides(slidesRes.slides);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to load module assessment details.");
       } finally {
@@ -377,7 +420,7 @@ export default function StudentModuleAssessmentPage({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs font-medium uppercase tracking-[0.24em] text-violet-200/80">
-                  {tab === "assignments" ? "Module Assignments" : "Module Quizzes"}
+                  {tab === "assignments" ? "Module Assignments" : tab === "quizzes" ? "Module Quizzes" : "Lecture Slides"}
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <h1 className="text-3xl font-semibold text-white">
@@ -392,7 +435,9 @@ export default function StudentModuleAssessmentPage({
                 <p className="mt-3 max-w-3xl text-sm text-slate-300">
                   {tab === "assignments"
                     ? "See every assignment for this module, review the details, and open the correct submission form only when you are ready."
-                    : "See every quiz for this module, review the details, and start the question set when you are ready to attempt it."}
+                    : tab === "quizzes"
+                    ? "See every quiz for this module, review the details, and start the question set when you are ready to attempt it."
+                    : "Download lecture slides uploaded by your tutor for this module."}
                 </p>
                 {moduleItem ? (
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-200">
@@ -405,7 +450,7 @@ export default function StudentModuleAssessmentPage({
 
               {embeddedTabs ? null : (
                 <div className="inline-flex rounded-full border border-white/10 bg-slate-950/60 p-1 shadow-[0_14px_35px_rgba(0,0,0,0.28)]">
-                  {(["assignments", "quizzes"] as const).map((item) => (
+                  {(["assignments", "quizzes", "slides"] as const).map((item) => (
                     <button
                       key={item}
                       type="button"
@@ -416,7 +461,7 @@ export default function StudentModuleAssessmentPage({
                           : "text-slate-300 hover:text-white"
                       }`}
                     >
-                      {item === "assignments" ? "Assignments" : "Quizzes"}
+                      {item === "assignments" ? "Assignments" : item === "quizzes" ? "Quizzes" : "Lecture Slides"}
                     </button>
                   ))}
                 </div>
@@ -427,7 +472,7 @@ export default function StudentModuleAssessmentPage({
           {embeddedTabs ? (
             <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur-xl">
               <div className="inline-flex rounded-full border border-white/10 bg-slate-950/60 p-1 shadow-[0_14px_35px_rgba(0,0,0,0.28)]">
-                {(["assignments", "quizzes"] as const).map((item) => (
+                {(["assignments", "quizzes", "slides"] as const).map((item) => (
                   <button
                     key={item}
                     type="button"
@@ -438,7 +483,7 @@ export default function StudentModuleAssessmentPage({
                         : "text-slate-300 hover:text-white"
                     }`}
                   >
-                    {item === "assignments" ? "Assignments" : "Quizzes"}
+                    {item === "assignments" ? "Assignments" : item === "quizzes" ? "Quizzes" : "Lecture Slides"}
                   </button>
                 ))}
               </div>
@@ -448,7 +493,51 @@ export default function StudentModuleAssessmentPage({
           {error ? <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-red-200">{error}</div> : null}
           {success ? <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-emerald-200">{success}</div> : null}
 
-          {tab === "assignments" ? (
+          {tab === "slides" ? (
+            <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(145deg,rgba(56,189,248,0.12),rgba(35,23,77,0.76))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-wide text-sky-200">Lecture Slides</div>
+                  <p className="mt-1 text-sm text-slate-300">Download lecture slides uploaded by your tutor for this module.</p>
+                </div>
+                <div className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100">
+                  {loading ? "..." : `${slides.length} slide${slides.length === 1 ? "" : "s"}`}
+                </div>
+              </div>
+              {loading ? (
+                <div className="text-sm text-slate-300">Loading slides...</div>
+              ) : slides.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm text-slate-400">
+                  No lecture slides available for this module yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {slides.map((slide) => (
+                    <div key={slide._id} className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-base font-semibold text-white">{slide.topic}</div>
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${slide.fileType === "PDF" ? "bg-red-400/15 text-red-200" : "bg-sky-400/15 text-sky-200"}`}>
+                              {slide.fileType}
+                            </span>
+                          </div>
+                          <div className="truncate text-xs text-slate-400">{slide.fileName} · {formatDateTime(slide.createdAt)}</div>
+                        </div>
+                        <a
+                          href={slide.fileData}
+                          download={slide.fileName}
+                          className="flex-shrink-0 rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                        >
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : tab === "assignments" ? (
             <div className="rounded-[26px] border border-white/10 bg-[linear-gradient(145deg,rgba(123,92,255,0.18),rgba(35,23,77,0.76))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
@@ -525,18 +614,13 @@ export default function StudentModuleAssessmentPage({
                               <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
                                 <div className="font-semibold text-violet-100">Uploaded File</div>
                                 <div className="mt-2">
-                                  {assignment.mySubmission.attachmentUrl ? (
-                                    <a
-                                      href={assignment.mySubmission.attachmentUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-blue-300 underline"
-                                    >
-                                      Open uploaded file
-                                    </a>
-                                  ) : (
-                                    "No uploaded file."
-                                  )}
+                                    {assignment.mySubmission.attachmentUrl ? (
+                                      <button type="button" onClick={() => void openAttachment(assignment.mySubmission!.attachmentUrl)} className="text-blue-300 underline">
+                                        Open uploaded file
+                                      </button>
+                                    ) : (
+                                      "No uploaded file."
+                                    )}
                                 </div>
                               </div>
                             )}
@@ -619,14 +703,9 @@ export default function StudentModuleAssessmentPage({
                                                 : `Upload your ${assignment.submissionType} file here.`}
                                           </div>
                                           {assignment.mySubmission?.attachmentUrl ? (
-                                            <a
-                                              href={assignment.mySubmission.attachmentUrl}
-                                              target="_blank"
-                                              rel="noreferrer"
-                                              className="text-xs text-blue-300 underline"
-                                            >
+                                            <button type="button" onClick={() => void openAttachment(assignment.mySubmission!.attachmentUrl)} className="text-xs text-blue-300 underline">
                                               Open current uploaded file
-                                            </a>
+                                            </button>
                                           ) : null}
                                           {form.fileError ? (
                                             <div className="text-xs font-medium text-red-300">{form.fileError}</div>
@@ -743,7 +822,7 @@ export default function StudentModuleAssessmentPage({
                 </div>
               )}
             </div>
-          ) : (
+          ) : tab === "quizzes" ? (
             <div className="space-y-4">
               <div className="rounded-[26px] border border-blue-200 bg-[linear-gradient(145deg,rgba(219,234,254,0.9),rgba(255,255,255,0.98))] p-5 shadow-[0_18px_50px_rgba(59,130,246,0.12)] backdrop-blur-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
@@ -896,7 +975,7 @@ export default function StudentModuleAssessmentPage({
                 </div>
               ) : null}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
