@@ -13,6 +13,7 @@ const modulesRoutes = require("./routes/modules.routes");
 const feedbacksRoutes = require("./routes/feedbacks.routes");
 const chatRoutes = require("./routes/chat.routes");
 const testRoutes = require("./routes/test.routes");
+const lectureSlidesRoutes = require("./routes/lectureSlides.routes");
 
 // Career module routes
 const careerCvRoutes = require("./career/routes/cvRoutes");
@@ -25,7 +26,7 @@ const careerAdminRoutes = require("./career/routes/adminRoutes");
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
@@ -39,6 +40,7 @@ app.use("/api/modules", modulesRoutes);
 app.use("/api/feedbacks", feedbacksRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/test", testRoutes);
+app.use("/api/lecture-slides", lectureSlidesRoutes);
 
 // Career module endpoints (all under /api/career/)
 app.use("/api/career/cv", careerCvRoutes);
