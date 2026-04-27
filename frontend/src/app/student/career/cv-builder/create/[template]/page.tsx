@@ -53,13 +53,38 @@ function buildPayload(cvData: CVState, templateId: string, status: "draft" | "fi
         email: cvData.email,
         phone: cvData.phone,
         location: cvData.location,
-        linkedIn: cvData.linkedIn,
+        linkedin: cvData.linkedIn,   // DB field is lowercase "linkedin"
         github: cvData.github,
       },
       summary: cvData.summary,
-      education: cvData.education.filter((e) => e.institution || e.degree).map(({ id: _id, ...rest }) => rest),
-      experience: cvData.experience.filter((e) => e.company || e.position).map(({ id: _id, ...rest }) => rest),
-      projects: cvData.projects.filter((p) => p.name).map(({ id: _id, ...rest }) => rest),
+      education: cvData.education
+        .filter((e) => e.institution || e.degree)
+        .map(({ id: _id, institution, degree, field, start, end }) => ({
+          institution,
+          degree,
+          fieldOfStudy: field,   // DB field is "fieldOfStudy"
+          startDate: start,      // DB field is "startDate"
+          endDate: end,          // DB field is "endDate"
+        })),
+      experience: cvData.experience
+        .filter((e) => e.company || e.position)
+        .map(({ id: _id, company, position, start, end, description }) => ({
+          company,
+          jobTitle: position,    // DB field is "jobTitle"
+          startDate: start,      // DB field is "startDate"
+          endDate: end,          // DB field is "endDate"
+          description,
+        })),
+      projects: cvData.projects
+        .filter((p) => p.name)
+        .map(({ id: _id, name, link, description, technologies }) => ({
+          title: name,           // DB field is "title"
+          link,
+          description,
+          technologies: technologies
+            ? technologies.split(",").map((t) => t.trim()).filter(Boolean)
+            : [],               // DB stores as [String] array
+        })),
       skills: cvData.skills,
     },
   };
@@ -69,11 +94,29 @@ type BackendCv = {
   _id: string;
   templateId?: { _id: string; name: string } | string;
   data?: {
-    personal?: { fullName?: string; email?: string; phone?: string; location?: string; linkedIn?: string; github?: string };
+    personal?: {
+      fullName?: string; email?: string; phone?: string; location?: string;
+      linkedin?: string; linkedIn?: string; github?: string;
+    };
     summary?: string;
-    education?: { institution?: string; degree?: string; field?: string; start?: string; end?: string }[];
-    experience?: { company?: string; position?: string; start?: string; end?: string; description?: string }[];
-    projects?: { name?: string; link?: string; description?: string; technologies?: string }[];
+    education?: {
+      institution?: string; degree?: string;
+      fieldOfStudy?: string; field?: string;
+      startDate?: string; start?: string;
+      endDate?: string; end?: string;
+    }[];
+    experience?: {
+      company?: string;
+      jobTitle?: string; position?: string;
+      startDate?: string; start?: string;
+      endDate?: string; end?: string;
+      description?: string;
+    }[];
+    projects?: {
+      title?: string; name?: string;
+      link?: string; description?: string;
+      technologies?: string[] | string;
+    }[];
     skills?: string[];
   };
 };
@@ -121,17 +164,39 @@ function CVCreateContent() {
         email: p.email || "",
         phone: p.phone || "",
         location: p.location || "",
-        linkedIn: p.linkedIn || "",
+        linkedIn: p.linkedin || p.linkedIn || "",   // DB uses "linkedin"
         github: p.github || "",
         summary: d.summary || "",
         education: (d.education || []).length > 0
-          ? (d.education || []).map((e) => ({ id: crypto.randomUUID(), institution: e.institution || "", degree: e.degree || "", field: e.field || "", start: e.start || "", end: e.end || "" }))
+          ? (d.education || []).map((e) => ({
+              id: crypto.randomUUID(),
+              institution: e.institution || "",
+              degree: e.degree || "",
+              field: e.fieldOfStudy || e.field || "",    // DB uses "fieldOfStudy"
+              start: e.startDate || e.start || "",       // DB uses "startDate"
+              end: e.endDate || e.end || "",             // DB uses "endDate"
+            }))
           : [{ id: crypto.randomUUID(), institution: "", degree: "", field: "", start: "", end: "" }],
         experience: (d.experience || []).length > 0
-          ? (d.experience || []).map((e) => ({ id: crypto.randomUUID(), company: e.company || "", position: e.position || "", start: e.start || "", end: e.end || "", description: e.description || "" }))
+          ? (d.experience || []).map((e) => ({
+              id: crypto.randomUUID(),
+              company: e.company || "",
+              position: e.jobTitle || e.position || "", // DB uses "jobTitle"
+              start: e.startDate || e.start || "",      // DB uses "startDate"
+              end: e.endDate || e.end || "",            // DB uses "endDate"
+              description: e.description || "",
+            }))
           : [{ id: crypto.randomUUID(), company: "", position: "", start: "", end: "", description: "" }],
         projects: (d.projects || []).length > 0
-          ? (d.projects || []).map((p2) => ({ id: crypto.randomUUID(), name: p2.name || "", link: p2.link || "", description: p2.description || "", technologies: p2.technologies || "" }))
+          ? (d.projects || []).map((p2) => ({
+              id: crypto.randomUUID(),
+              name: p2.title || p2.name || "",           // DB uses "title"
+              link: p2.link || "",
+              description: p2.description || "",
+              technologies: Array.isArray(p2.technologies)
+                ? p2.technologies.join(", ")             // DB stores as [String]
+                : (p2.technologies || ""),
+            }))
           : [{ id: crypto.randomUUID(), name: "", link: "", description: "", technologies: "" }],
         skills: d.skills || [],
         skillInput: "",
