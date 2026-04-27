@@ -46,12 +46,17 @@ type QuizForm = { title: string; description: string; moduleName: string; totalM
 type AssignmentFormErrors = Partial<Record<"title" | "description" | "moduleName" | "totalMarks" | "deadline" | "submissionType", string>>;
 type QuizQuestionErrors = Partial<Record<"questionText" | "topicCategory" | "correctAnswer" | "marks" | "options", string>>;
 type QuizFormErrors = Partial<Record<"title" | "description" | "moduleName" | "totalMarks" | "deadline" | "questionsTotal", string>> & { questions?: QuizQuestionErrors[] };
+type LectureSlide = { _id: string; topic: string; moduleName: string; fileData: string; fileName: string; fileType: "PDF" | "PPTX"; createdAt: string };
+type SlideForm = { topic: string; moduleName: string; fileData: string; fileName: string; fileType: "PDF" | "PPTX" | "" };
+type SlideFormErrors = Partial<Record<"topic" | "moduleName" | "file", string>>;
 
 const shell = "rounded-[28px] border border-blue-100 bg-white shadow-[0_20px_60px_rgba(37,99,235,0.08)]";
 const input = "w-full rounded-2xl border border-blue-100 bg-blue-50/40 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500";
 const card = "rounded-2xl border border-blue-100 bg-white p-4";
 const overlay = "fixed inset-0 z-[90] overflow-y-auto bg-slate-950/80 px-4 py-8 backdrop-blur-sm";
 const modalCard = "mx-auto w-full max-w-4xl rounded-[30px] border border-blue-100 bg-white p-6 shadow-[0_30px_90px_rgba(37,99,235,0.12)]";
+const SLIDE_TOPIC_MAX_LENGTH = 50;
+const emptySlide: SlideForm = { topic: "", moduleName: "", fileData: "", fileName: "", fileType: "" };
 const ASSIGNMENT_TITLE_MAX_LENGTH = 50;
 const ASSIGNMENT_INSTRUCTIONS_MAX_LENGTH = 200;
 const QUIZ_TITLE_MAX_LENGTH = 50;
@@ -136,7 +141,7 @@ function TutorAssignmentsContent() {
   const token = useMemo(() => getToken(), []);
   const requestedTab = searchParams.get("tab");
   const selectedModuleId = searchParams.get("moduleId");
-  const [tab, setTab] = useState<"assignments" | "quizzes">("assignments");
+  const [tab, setTab] = useState<"assignments" | "quizzes" | "slides">("assignments");
   const [showAssignmentForm, setShowAssignmentForm] = useState(false);
   const [showQuizForm, setShowQuizForm] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -173,6 +178,13 @@ function TutorAssignmentsContent() {
   const [quizReviewForm, setQuizReviewForm] = useState<QuizReviewForm>({ answers: [], overallFeedback: "" });
   const [quizReviewErrors, setQuizReviewErrors] = useState<QuizReviewErrors>({});
   const [savingQuizReview, setSavingQuizReview] = useState(false);
+  const [slides, setSlides] = useState<LectureSlide[]>([]);
+  const [loadingSlides, setLoadingSlides] = useState(true);
+  const [showSlideForm, setShowSlideForm] = useState(false);
+  const [slideForm, setSlideForm] = useState<SlideForm>(emptySlide);
+  const [slideFormErrors, setSlideFormErrors] = useState<SlideFormErrors>({});
+  const [savingSlide, setSavingSlide] = useState(false);
+  const [deletingSlideId, setDeletingSlideId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -182,10 +194,11 @@ function TutorAssignmentsContent() {
   const visibleModules = useMemo(() => activeModule ? [activeModule] : availableModules, [activeModule, availableModules]);
   const visibleAssignments = useMemo(() => activeModule ? assignments.filter((item) => item.moduleName === activeModule.name) : assignments, [activeModule, assignments]);
   const visibleQuizzes = useMemo(() => activeModule ? quizzes.filter((item) => item.moduleName === activeModule.name) : quizzes, [activeModule, quizzes]);
+  const visibleSlides = useMemo(() => activeModule ? slides.filter((item) => item.moduleName === activeModule.name) : slides, [activeModule, slides]);
 
   useEffect(() => {
-    if (requestedTab === "assignments" || requestedTab === "quizzes") {
-      setTab(requestedTab);
+    if (requestedTab === "assignments" || requestedTab === "quizzes" || requestedTab === "slides") {
+      setTab(requestedTab as "assignments" | "quizzes" | "slides");
     }
   }, [requestedTab]);
 
@@ -193,14 +206,66 @@ function TutorAssignmentsContent() {
     if (!activeModule) return;
     setAssignmentForm((current) => ({ ...current, moduleName: activeModule.name }));
     setQuizForm((current) => ({ ...current, moduleName: activeModule.name }));
+    setSlideForm((current) => ({ ...current, moduleName: activeModule.name }));
   }, [activeModule]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { async function boot() { if (!token) { router.push("/login"); return; } try { const me = await apiFetch<{ user: User }>("/api/me", {}, token); if (me.user.role !== "TUTOR") { router.push("/login"); return; } await Promise.all([loadAssignments(token), loadQuizzes(token), loadModules(token)]); } catch (err: unknown) { setLoadingAssignments(false); setLoadingQuizzes(false); setLoadingModules(false); setError(err instanceof Error ? err.message : "Failed to load data."); } } void boot(); }, [router, token]);
+  useEffect(() => { async function boot() { if (!token) { router.push("/login"); return; } try { const me = await apiFetch<{ user: User }>("/api/me", {}, token); if (me.user.role !== "TUTOR") { router.push("/login"); return; } await Promise.all([loadAssignments(token), loadQuizzes(token), loadModules(token), loadSlides(token)]); } catch (err: unknown) { setLoadingAssignments(false); setLoadingQuizzes(false); setLoadingModules(false); setLoadingSlides(false); setError(err instanceof Error ? err.message : "Failed to load data."); } } void boot(); }, [router, token]);
 
   async function loadAssignments(authToken = token) { if (!authToken) return; setLoadingAssignments(true); const data = await apiFetch<{ assignments: Assignment[] }>("/api/assignments", {}, authToken); setAssignments(data.assignments); setLoadingAssignments(false); }
   async function loadQuizzes(authToken = token) { if (!authToken) return; setLoadingQuizzes(true); const data = await apiFetch<{ quizzes: Quiz[] }>("/api/quizzes", {}, authToken); setQuizzes(data.quizzes); setLoadingQuizzes(false); }
   async function loadModules(authToken = token) { if (!authToken) return; setLoadingModules(true); const data = await apiFetch<{ modules: ModuleOption[] }>("/api/modules", {}, authToken); setAvailableModules(data.modules); setLoadingModules(false); }
+  async function loadSlides(authToken = token) { if (!authToken) return; setLoadingSlides(true); try { const data = await apiFetch<{ slides: LectureSlide[] }>("/api/lecture-slides", {}, authToken); setSlides(data.slides); } catch { /* ignore */ } finally { setLoadingSlides(false); } }
+
+  async function saveSlide() {
+    if (!token) return;
+    const errors: SlideFormErrors = {};
+    if (!slideForm.topic.trim()) errors.topic = "This field is required.";
+    else if (slideForm.topic.trim().length > SLIDE_TOPIC_MAX_LENGTH) errors.topic = `Topic must be ${SLIDE_TOPIC_MAX_LENGTH} characters or fewer.`;
+    if (!slideForm.moduleName) errors.moduleName = "This field is required.";
+    if (!slideForm.fileData) errors.file = "Please upload a PDF or PowerPoint file.";
+    setSlideFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    setSavingSlide(true); setError(null); setSuccess(null);
+    try {
+      const data = await apiFetch<{ slide: LectureSlide }>("/api/lecture-slides", { method: "POST", body: JSON.stringify({ topic: slideForm.topic.trim(), moduleName: slideForm.moduleName, fileData: slideForm.fileData, fileName: slideForm.fileName, fileType: slideForm.fileType }) }, token);
+      setSlides((current) => [data.slide, ...current]);
+      setSlideForm(emptySlide); setSlideFormErrors({}); setShowSlideForm(false);
+      setSuccess("Lecture slide added successfully.");
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed to add lecture slide."); }
+    finally { setSavingSlide(false); }
+  }
+
+  async function deleteSlide(id: string) {
+    if (!token) return;
+    setDeletingSlideId(id); setError(null); setSuccess(null);
+    try {
+      const data = await apiFetch<{ message: string }>(`/api/lecture-slides/${id}`, { method: "DELETE" }, token);
+      setSlides((current) => current.filter((item) => item._id !== id));
+      setSuccess(data.message || "Lecture slide deleted.");
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Failed to delete lecture slide."); }
+    finally { setDeletingSlideId(null); }
+  }
+
+  function handleSlideFileChange(file: File | null) {
+    if (!file) { setSlideForm((current) => ({ ...current, fileData: "", fileName: "", fileType: "" })); return; }
+    const fileName = file.name.toLowerCase();
+    const mimeType = file.type.toLowerCase();
+    const isPdf = fileName.endsWith(".pdf") || mimeType === "application/pdf";
+    const isPptx = fileName.endsWith(".pptx") || mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    if (!isPdf && !isPptx) {
+      setSlideFormErrors((current) => ({ ...current, file: "Only PDF or PowerPoint (.pptx) files are allowed." }));
+      return;
+    }
+    setSlideFormErrors((current) => ({ ...current, file: undefined }));
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setSlideForm((current) => ({ ...current, fileData: result, fileName: file.name, fileType: isPdf ? "PDF" : "PPTX" }));
+    };
+    reader.onerror = () => setError("Failed to read the selected file.");
+    reader.readAsDataURL(file);
+  }
 
   async function saveAssignment(status: Status) {
     if (!token) return;
@@ -459,11 +524,11 @@ function TutorAssignmentsContent() {
   return (
     <div className="px-4 py-6">
       <div className="mx-auto w-full max-w-6xl space-y-4">
-        <div className={`${shell} p-6`}><div className="text-xs font-medium uppercase tracking-[0.24em] text-orange-200/80">Assessment Studio</div><h1 className="mt-3 text-3xl font-semibold text-white">Assignments & Quizzes</h1><p className="mt-2 max-w-2xl text-sm text-slate-300">Create assignments and quizzes for students from one tutor workspace.</p></div>
+        <div className={`${shell} p-6`}><div className="text-xs font-medium uppercase tracking-[0.24em] text-orange-200/80">Assessment Studio</div><h1 className="mt-3 text-3xl font-semibold text-white">Assignments, Quizzes & Slides</h1><p className="mt-2 max-w-2xl text-sm text-slate-300">Create assignments, quizzes, and upload lecture slides for students from one tutor workspace.</p></div>
         <div className={`${shell} p-4`}>
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="inline-flex rounded-full border border-white/10 bg-slate-950/60 p-1 shadow-[0_14px_35px_rgba(0,0,0,0.28)]">
-              {(["assignments", "quizzes"] as const).map((item) => <button key={item} type="button" onClick={() => setTab(item)} className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${tab === item ? "bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 text-slate-950 shadow-[0_12px_30px_rgba(251,146,60,0.35)]" : "text-slate-300 hover:text-white"}`}>{item === "assignments" ? "Assignments" : "Quizzes"}</button>)}
+              {(["assignments", "quizzes", "slides"] as const).map((item) => <button key={item} type="button" onClick={() => setTab(item)} className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${tab === item ? "bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 text-slate-950 shadow-[0_12px_30px_rgba(251,146,60,0.35)]" : "text-slate-300 hover:text-white"}`}>{item === "assignments" ? "Assignments" : item === "quizzes" ? "Quizzes" : "Lecture Slides"}</button>)}
             </div>
             <button
               type="button"
@@ -592,7 +657,7 @@ function TutorAssignmentsContent() {
               )}
             </div>
           </div>
-        ) : (
+        ) : tab === "quizzes" ? (
           <div className="space-y-4">
             <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,rgba(168,85,247,0.14),rgba(17,24,39,0.78))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl"><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><div className="text-sm font-semibold uppercase tracking-wide text-orange-100">Quiz Management</div><p className="mt-3 max-w-2xl text-sm text-slate-300">Create quizzes, add questions, and manage saved quiz sets here.</p></div><button type="button" onClick={() => { setShowQuizForm((current) => !current); setQuizFormErrors({}); setError(null); setSuccess(null); }} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-[0_14px_32px_rgba(251,146,60,0.35)]">{showQuizForm ? "Close Form" : "Create Quiz"}</button></div></div>
             {showQuizForm ? <div className={`${shell} p-6`}><h2 className="text-2xl font-semibold text-white">Create a New Quiz</h2><p className="mt-2 text-sm text-slate-300">Select one of the admin-created modules before building the quiz.</p><form className="mt-6 space-y-6" onSubmit={(event: FormEvent) => { event.preventDefault(); void saveQuiz("PUBLISHED"); }}><div className="grid gap-4 md:grid-cols-2"><div className="md:col-span-2"><input className={`${input}`} placeholder="Quiz Title" value={quizForm.title} onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })} maxLength={QUIZ_TITLE_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{quizForm.title.length}/{QUIZ_TITLE_MAX_LENGTH}</p>{fieldError(quizFormErrors.title)}</div><div className="md:col-span-2"><textarea className={`${input}`} rows={5} placeholder="Instructions" value={quizForm.description} onChange={(e) => setQuizForm({ ...quizForm, description: e.target.value, instructions: e.target.value })} maxLength={QUIZ_INSTRUCTIONS_MAX_LENGTH} required /><p className="mt-1 text-right text-xs text-slate-400">{quizForm.description.length}/{QUIZ_INSTRUCTIONS_MAX_LENGTH}</p>{fieldError(quizFormErrors.description)}</div><div><select className={input} value={quizForm.moduleName} onChange={(e) => setQuizForm({ ...quizForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}><option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>{visibleModules.map((moduleItem) => <option key={moduleItem._id} value={moduleItem.name}>{moduleItem.moduleCode} - {moduleItem.name} - Year {moduleItem.year} Semester {moduleItem.semester}</option>)}</select>{fieldError(quizFormErrors.moduleName)}</div><div><input className={input} type="number" min="0" placeholder="Total Marks" value={quizForm.totalMarks} onChange={(e) => setQuizForm({ ...quizForm, totalMarks: e.target.value })} required />{fieldError(quizFormErrors.totalMarks)}{fieldError(quizFormErrors.questionsTotal)}</div><div><input className={input} type="datetime-local" value={quizForm.deadline} onChange={(e) => setQuizForm({ ...quizForm, deadline: e.target.value })} required />{fieldError(quizFormErrors.deadline)}</div></div><div className="rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-3 text-sm text-slate-300">Question Marks Total: {totalQuizQuestionMarks(quizForm.questions)} / {quizForm.totalMarks || 0}</div>{renderQuestions(quizForm, "create", savingQuiz, quizFormErrors.questions)}<div className="flex flex-wrap gap-3"><button type="submit" disabled={savingQuiz} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-70">{savingQuiz ? "Saving..." : "Publish Quiz"}</button><button type="button" disabled={savingQuiz} onClick={() => void saveQuiz("DRAFT")} className="rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-200 disabled:opacity-70">Save as Draft</button></div></form></div> : null}
@@ -602,7 +667,92 @@ function TutorAssignmentsContent() {
               {loadingQuizzes ? <div className="mt-5 text-sm text-slate-300">Loading quizzes...</div> : visibleQuizzes.length === 0 ? <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-5 text-sm text-slate-400">{activeModule ? "No quizzes created yet for this module." : "No quizzes created yet."}</div> : <div className="mt-5 space-y-3">{visibleQuizzes.map((quiz) => <div key={quiz._id} className={card}><div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"><div className="space-y-2"><div className="flex flex-wrap items-center gap-2"><div className="text-lg font-semibold text-white">{quiz.title}</div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${quiz.status === "PUBLISHED" ? "bg-emerald-400/15 text-emerald-200" : "bg-amber-400/15 text-amber-200"}`}>{quiz.status === "PUBLISHED" ? "Published" : "Draft"}</span></div><div className="text-sm text-slate-300">{quiz.description}</div><div className="flex flex-wrap gap-2 text-xs text-slate-400"><span className="rounded-full bg-white/5 px-3 py-1">Module: {quiz.moduleName}</span><span className="rounded-full bg-white/5 px-3 py-1">Marks: {quiz.totalMarks}</span><span className="rounded-full bg-white/5 px-3 py-1">Questions: {quiz.questions.length}</span></div></div><div className="space-y-1 text-sm text-slate-300 md:text-right"><div>Deadline: {dt(quiz.deadline)}</div><div className="text-xs text-slate-500">Created: {dt(quiz.createdAt)}</div></div></div><div className="mt-3 flex flex-wrap gap-3"><button type="button" onClick={() => openQuizDetails(quiz)} className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100">View</button>{quiz.status === "PUBLISHED" ? <button type="button" onClick={() => void openQuizAttempts(quiz._id)} disabled={loadingAttemptQuizId === quiz._id} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 disabled:opacity-60">{loadingAttemptQuizId === quiz._id ? "Loading..." : "Review Attempts"}</button> : null}{quiz.status === "DRAFT" ? <button type="button" onClick={() => void publishQuiz(quiz._id)} disabled={publishingQuizId === quiz._id} className="rounded-full bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-70">{publishingQuizId === quiz._id ? "Publishing..." : "Publish"}</button> : null}<button type="button" onClick={() => void deleteQuiz(quiz._id)} disabled={deletingQuizId === quiz._id} className="rounded-full border border-red-400/25 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 disabled:opacity-60">{deletingQuizId === quiz._id ? "Deleting..." : "Delete"}</button></div></div>)}</div>}
             </div>
           </div>
-        )}
+        ) : tab === "slides" ? (
+          <div className="space-y-4">
+            <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,rgba(56,189,248,0.14),rgba(17,24,39,0.78))] p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-wide text-sky-200">Lecture Slides</div>
+                  <p className="mt-3 max-w-2xl text-sm text-slate-300">Upload PDF or PowerPoint lecture resources for students to access and download.</p>
+                </div>
+                <button type="button" onClick={() => { setShowSlideForm((c) => !c); setSlideFormErrors({}); setError(null); setSuccess(null); }} className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(56,189,248,0.3)]">
+                  {showSlideForm ? "Close Form" : "Add Slide"}
+                </button>
+              </div>
+            </div>
+
+            {showSlideForm ? (
+              <div className={`${shell} p-6`}>
+                <h2 className="text-2xl font-semibold text-white">Add Lecture Slide</h2>
+                <p className="mt-2 text-sm text-slate-300">Upload a PDF or PowerPoint file and give it a topic name for students to download.</p>
+                <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={(e: FormEvent) => { e.preventDefault(); void saveSlide(); }}>
+                  <div className="md:col-span-2">
+                    <input className={input} placeholder="Topic" value={slideForm.topic} onChange={(e) => setSlideForm({ ...slideForm, topic: e.target.value })} maxLength={SLIDE_TOPIC_MAX_LENGTH} required />
+                    <p className="mt-1 text-right text-xs text-slate-500">{slideForm.topic.length}/{SLIDE_TOPIC_MAX_LENGTH}</p>
+                    {fieldError(slideFormErrors.topic)}
+                  </div>
+                  <div>
+                    <select className={input} value={slideForm.moduleName} onChange={(e) => setSlideForm({ ...slideForm, moduleName: e.target.value })} required disabled={loadingModules || visibleModules.length === 0 || !!activeModule}>
+                      <option value="">{loadingModules ? "Loading modules..." : visibleModules.length === 0 ? "No modules available" : "Select module"}</option>
+                      {visibleModules.map((m) => <option key={m._id} value={m.name}>{m.moduleCode} - {m.name} - Year {m.year} Sem {m.semester}</option>)}
+                    </select>
+                    {fieldError(slideFormErrors.moduleName)}
+                  </div>
+                  <div>
+                    <label className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 transition hover:bg-white/10">
+                      <span className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/8 text-base font-bold">+</span>
+                      <span className="truncate">{slideForm.fileName || "Upload PDF or PowerPoint (.pptx)"}</span>
+                      <input type="file" accept=".pdf,application/pdf,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation" onChange={(e) => handleSlideFileChange(e.target.files?.[0] ?? null)} className="sr-only" />
+                    </label>
+                    {slideFormErrors.file ? <p className="mt-1 text-xs font-medium text-red-400">{slideFormErrors.file}</p> : null}
+                    {slideForm.fileType ? <p className="mt-1 text-xs text-sky-300">Selected: {slideForm.fileType} · {slideForm.fileName}</p> : null}
+                  </div>
+                  <div className="flex flex-wrap gap-3 md:col-span-2">
+                    <button type="submit" disabled={savingSlide} className="rounded-full bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-3 text-sm font-semibold text-white disabled:opacity-70">{savingSlide ? "Uploading..." : "Add Slide"}</button>
+                  </div>
+                </form>
+              </div>
+            ) : null}
+
+            <div className={`${shell} p-5`}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-wide text-sky-200">Uploaded Slides</div>
+                  <p className="mt-2 text-sm text-slate-300">{activeModule ? `${activeModule.moduleCode} - ${activeModule.name}` : "All uploaded lecture slides."}</p>
+                </div>
+                <button type="button" onClick={() => void loadSlides()} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-100">Refresh</button>
+              </div>
+              {loadingSlides ? (
+                <div className="mt-5 text-sm text-slate-400">Loading slides...</div>
+              ) : visibleSlides.length === 0 ? (
+                <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-5 text-sm text-slate-400">
+                  {activeModule ? "No lecture slides uploaded yet for this module." : "No lecture slides uploaded yet."}
+                </div>
+              ) : (
+                <div className="mt-5 space-y-3">
+                  {visibleSlides.map((slide) => (
+                    <div key={slide._id} className={card}>
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-base font-semibold text-white">{slide.topic}</div>
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${slide.fileType === "PDF" ? "bg-red-400/15 text-red-200" : "bg-sky-400/15 text-sky-200"}`}>{slide.fileType}</span>
+                          </div>
+                          <div className="text-xs text-slate-400">Module: {slide.moduleName}</div>
+                          <div className="text-xs text-slate-500">{slide.fileName} · Uploaded {dt(slide.createdAt)}</div>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                          <a href={slide.fileData} download={slide.fileName} className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-200 transition hover:bg-emerald-500/20">Download</a>
+                          <button type="button" onClick={() => void deleteSlide(slide._id)} disabled={deletingSlideId === slide._id} className="rounded-full border border-red-400/25 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 disabled:opacity-60">{deletingSlideId === slide._id ? "Deleting..." : "Delete"}</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {selectedAssignment ? (
